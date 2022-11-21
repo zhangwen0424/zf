@@ -89,7 +89,7 @@ class Animal2 {
 class Mouse extends Animal2 {
   static getType() {
     console.log("子");
-    // 调用父类
+    // 调用父类，静态方法中的super指代的是父类
     super.getType(); // Animal2.getType();
     return "动物";
   }
@@ -97,6 +97,7 @@ class Mouse extends Animal2 {
     // 兼容父类，组合优先于继承
     // 父类返回值为void， 子类可以随便实现
     console.log("子say");
+    // 原型方法中的super指代的是父类的原型
     super.say("name", 1); // 调用父类原型的 say 方法
     return "abc";
   }

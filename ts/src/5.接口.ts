@@ -145,25 +145,18 @@ class Speak implements SpeakEngilsh {
   }
 }
 
-class Animal {
-  say(message: string) {
-    console.log(message);
-  }
-  static getType() {
-    return "动物";
-  }
+// 描述构造函数类型. 类类型 描述的是实例，想获取到类本身的类型 需要采用 typeof 获取
+class Animal {}
+class Meat {}
+interface Clazz<Txx> {
+  new (): Txx;
 }
-class Cat extends Animal {
-  say() {
-    // 原型方法中的super指代的是父类的原型
-    super.say("猫猫叫");
-  }
-  static getType() {
-    // 静态方法中的super指代的是父类
-    return Animal.getType();
-  }
+// typeof Clazz -> new (): Clazz;类类型，可以 new，并且返回类的实例
+// 泛型类似于函数的参数 , 泛型的声明一般采用一个大写（开头）字母来表示
+function createInstance<Txx>(clazz: Clazz<Txx>) {
+  return new clazz();
 }
-let cat = new Cat();
-console.log(Cat.getType());
+// let instance = createInstance<Meat>(Meat); // 类似的映射关系，是在使用的时候定义的
+let instance = createInstance(Meat); // <Meat>可省略，ts 中类型会自动推导
 
 export {};
