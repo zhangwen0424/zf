@@ -15,7 +15,7 @@ export default {
   },
   plugins: [
     nodeResolve({
-      extensions: ["js", "ts"], // 解析文件的格式
+      extensions: [".js", ".ts"], // 解析文件的格式
     }),
     ts({
       // path.resolve 是根据执行命令的位置解析出的绝对路径
