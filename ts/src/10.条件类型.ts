@@ -73,6 +73,27 @@ type InstanceType<T extends new (...args: any[]) => any> = T extends {
 }
   ? I
   : never;
-type I1 = InstanceType<typeof Person>;
+type I1 = InstanceType<typeof Person>; // 内置的
+
+// 构造函数的类型
+type ConstructorParameters<T extends new (...args: any[]) => any> =
+  T extends new (...args: infer P) => any ? P : never;
+type T5 = ConstructorParameters<typeof Person>; // type T5 = []
+
+//  ["jw", 30, 40, 50, "回龙观"]  ==> ["回龙观","jw",30,40,50]
+type TailToHead<T extends any[]> = T extends [...infer C, infer B]
+  ? [B, ...C]
+  : any;
+type x = TailToHead<["jw", 30, 40, 50, "回龙观"]>;
+
+// 将元组转换成联合类型
+type ElementOf<T> = T extends Array<infer R> ? R : any;
+type TupleToUnion = ElementOf<[string, number, boolean]>; // type TupleToUnion = string | number | boolean
+
+// 判断 promise的返回类型
+type PromiseV<T> = T extends Promise<infer P> ? PromiseV<P> : T;
+type PromiseReturnValue = PromiseV<Promise<Promise<number>>>; // type PromiseReturnValue = number
+
+// infer 就是推导条件中的某个部分
 
 export {};
