@@ -1,115 +1,67 @@
-// 兼容性：子类型可以赋予给父类型。 结构上来看是否兼容
-// ts中 结构化的类型系统 （鸭子类型检查）、 长得一样就ok。 比如果两个类型名字不一样但是无法区分
+// 类型保护  js + ts
 
-import { forEachChild } from "../node_modules/typescript/lib/typescript";
+// ts 默认在使用的时候 都是联合类型， 不能直接使用联合类型。 识别类型，针对某一种类型进行处理
+// 对不同的类型进行范围缩小
 
-let obj: {
-  toString(): string;
-};
-type T1 = string extends { toString(): string } ? true : false; // type T1 = true
-let str: string = "abc";
-
-// 这两个类型单从 类型层级来看 是不存在父子关系
-obj = str; // 兼容性  我们可以把string 看成一个对象 基于toString扩展了其他的功能
-obj.toString(); // 安全， 保证使用的时候不会发生异常
-
-type xxx = keyof string;
-
-// 接口类型
-interface IAnimal {
-  name: string;
-  age: number;
-}
-interface IPerson {
-  name: string;
-  age: number;
-  address: string;
-}
-let animal: IAnimal;
-let person: IPerson = {
-  name: "zw",
-  age: 10,
-  address: "",
-};
-animal = person; // 子类赋予给父类 兼容 、 你要的我都有安全
-
-type T2 = IPerson extends IAnimal ? true : false; // type T2 = true
-
-// 子 父关系 不要考虑 谁多谁少，考虑的是父子类型的层级关系
-
-// 函数的兼容性，安全性来考虑
-let sum1 = (a: string, b: string) => a + b;
-let sum2 = (a: string) => a;
-sum1 = sum2;
-
-// 原生：forEach(callbackfn: (value: T, index: number, array: T[]) => void, thisArg?: any): void;
-const forEach = (
-  arr: any[],
-  callback: (item: any, idx: number, array: any[]) => void
-) => {
-  for (let i = 0; i < arr.length; i++) {
-    callback(arr[i], i, arr); // callback 没有执行， 所以无法推导arr[i] = T
+// typeof 类型保护
+// instanceof 类型保护
+// in 保护
+function double(a: string | number) {
+  if (typeof a == "string") {
+    return a + a;
+  } else {
+    return a * 2;
   }
-};
-forEach(["a", "b", "c"], function (item) {
-  console.log("item", item);
-});
-
-// 对应函数的参数来讲  少的参数可以赋予给多的，因为人家内部实现，传递了多个但是我用的少，安全，如果我多写了那就不安全的
-
-let sum3!: () => string | number;
-let sum4!: () => string;
-sum3 = sum4;
-
-class A {
-  private name!: string;
-  age!: number;
 }
-class B {
-  private name!: string;
-  age!: number;
-}
-// let a: A = new B();// 报错，私有属性不匹配
 
-// 类型分为两种 结构化类型 ， 标称类型
+class Person {}
+class Dog {}
+function getInstance(clazz: new (...args: any[]) => Dog | Person) {
+  return new clazz();
+}
+let p = getInstance(Person);
+if (p instanceof Person) {
+  p; //let p: Person
+} else {
+  p; //let p: Dog
+}
 
-class AddType<S> {
-  private _type!: S;
+// 通过js 来判断，差异是通过ts来实现的。 可辨识类型
+interface Bird {
+  fly: string;
+  kind: "鸟";
 }
-type NewType<T, S extends string> = T & AddType<S>;
-type BTC = NewType<number, "btc">; // number + BTC
-type USDT = NewType<number, "usdt">; // number + USDT
-let btc: BTC = 100 as BTC;
-let usdt: USDT = 100 as USDT;
-function getCount(count: USDT) {
-  return count;
+interface Fish {
+  swim: string;
+  kind: "鱼";
 }
-getCount(usdt); // 标称类型
+function getType1(type: Bird | Fish) {
+  //  可辨识类型
+  if ("swim" in type) {
+    type; // type: Fish
+  } else {
+    type; // type: Bird
+  }
+}
+function getType2(type: Bird | Fish) {
+  // 可辨识类型
+  if (type.kind == "鸟") {
+    type;
+  } else {
+    type;
+  }
+}
 
-// 逆变和协变  子 -》 父    协变  父 - 》子  （传父 、返子）
+// 确保一个变量是数组
+function ensureArray<T>(input: T | T[]): T[] {
+  // 类型来辨识
+  if (Array.isArray(input)) {
+    return input;
+  } else {
+    return [input];
+  }
+}
 
-class Parent {
-  house() {}
-}
-class Child extends Parent {
-  car() {}
-}
-class Grandson extends Child {
-  sleep() {}
-}
-// 都是可以通过父子关系来证明 兼容性的
-function fn(callback: (instance: Child) => Child) {
-  let r = callback(new Grandson());
-  // r 是child的类型，如果用户返回了 new Grandson ， grandson 是属于child的子类型的
-  // r.sleep; // 报错
-}
-// 1) 赋予值的时候可以赋予 自己和子类型
-// 2) 内部调用callback的时候 可以传递 child 或者 Grandson（传递了grandson，但是在使用grandson中的属性肯定使用不了）
-// 3) 如果用户回调中，使用属性的时候 要保证范围不能超过 Child控制的范围， 所以标识grandson的话可能会不安全, 但是标识Parent 是安全的，因为子类中的属性包含了parent
-
-fn((instance: Parent): Child => {
-  instance.house;
-  return new Grandson();
-});
+// > 可辨识的联合类型
 
 export {};
