@@ -1,3 +1,4 @@
+// 数组过滤掉指定元素
 export type Filter<T extends any[], A, F extends any[] = []> =
   // 先取出第一项，来判断是否满足，如果满足 需要递归处理R
   T extends [infer L, ...infer R]
