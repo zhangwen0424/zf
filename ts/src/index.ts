@@ -1,58 +1,37 @@
-// 类型声明
-// 我们编写的类型 在最终编译的时候都会被删除， 为了让别人拥有代码提示。 用ts写的代码打包后可以生成声明文件
+// 回顾
+// infer 只能在条件类型中使用， 用来取部分类型的  ReturnType、Paramaters、instanceType...
 
-// 1.我下载了一个早期的非ts的包，在我的项目中用就报错了
-// 2.我们通过CDN引入的包
-// 3.引入了一个不是ts的文件 .vue .md .png .css
-// 4.我想去再全局上扩展的属性使用
-// 解决方法：自己编写声明文件
+// ts中的兼容性问题 （ts类型是结构化的类型系统 鸭子类型） 结构检测 ， 类型角度来考虑兼容性 子类型可以赋予给父类型
 
-// 声明类型声明的方式 declare 这都是类型，相当于告诉vscode 别报错了
-// 声明文件不要放在业务代码中，统一管理，.d.ts
+// 联合类型的兼容性问题：联合类型中的任意一个类型都可以赋予给联合类型  number|string = number
+// 交叉类型 交叉后的类型是子类型，子类型可以赋予给交叉前的任何一个类型 A =  A & B . B =  A & B
+// 接口，类，结构， 多的可以赋予给少的 （多的是基于少的进行扩展了）  A extends B .  B  =  A
+// 函数类型兼容性 函数的参数个数，定义的类型个数可以大于实际的个数。 返回值类型 void 表示的是不关心返回值
+// 逆变和协变  参数可以是逆变  A < B  Box<A> > Box<B>  函数的参数可以传递父类
+// 协变就是 A < B . A < B . (特性：考虑安全) {concat():void,push():void} 禁用参数逆变
 
-// console.log(Seasons.Spring);
-// console.log(sum);// 报错
-// let person: Person = {
-//   a: "abc",
-// };
-// console.log(person);
-// $(".box").height(300).width(100);
-// $.ajax("/login", { method: "get" });
-// $.fn.extend({});
+// 类型推断
+// 1) 赋值推断。 默认的推导都是从右边到左边
+// 2) 函数的返回值是可以自动推导的
+// 3) 反向推断， 从左向右的方式， 上下文推断 （参数按照编写位置进行推断，返回值也是一样）
 
-import mitt from "mitt"; // 导入模块
-import type { Listener } from "mitt"; // 导入类型
+// 类型保护 （联合类型的问题）
+// typeof instanceof in
+// 可辨识联合类型 （结构有唯一标识）
+// is 语法 ts语法， 可以判断某个类型
+// null 保护
 
-let fn: Listener = function (...args) {
-  console.log("args:", args);
-};
-mitt.on("data", fn);
-mitt.emit("data", "a", "b");
-mitt.zoo;
+// unknown 用的时候需要先确定类型再使用 ， unknown 是any的安全类型 （any的地方可以考虑换成unknown）
 
-import url from "1.jpg";
+// （条件类型 Exlcude Extract 集合操作）映射类型（结构上的操作）
+// 修饰作用 Partial ?   、 Required   -? 、readonly   -readonly
+// 重构结构类型 Pick Omit
+// Record 用来替换掉object类型  =》 key,value 采用Record类型
 
-import $ from "jquery";
-// import bt from "is-builtin-module";
+// 重映射语法  as 某个新的内容
 
-// 配置 tsconfig.json 中 "moduleResolution": "node"
-// 默认查找第三方类型 会先查找当前同名的包node_modules下面有没有 package.json > types 有就采用制定的问题
-// 如果没有types 就查找 当前包有没有index.d.ts，如果没有继续查找
-// 查找当前@types 目录下是否有此模块，找对应的同名的文件夹下的声明文件. 如果没有对应的包会按照你配置的解析规范查找
-
-// npm install jquery  找不到对应模块
-// npm install @types/jquery  可在@types 中找到对应模块
-
-// 如果没有 就会提示报错，你可以自己编写类型
-// 想指定ts的查找路径 可以使用 types字段 (指定后先找自己的再找第三方的)
-import _ from "lodash";
-_.a();
-
-// 三斜线指令：/// <reference path="./lodash.d.ts"/>
-// 1) path 引入自己的声明，给路径
-// 2) types 依赖的第三方模块
-// 3） lib ts内置的类型声明 放到页面顶部才能正常使用
-
-// export as namespace _;//把这个命名空间变成全局变量，不需要引入
+// 命名空间 namesapce 扩展的特点 平时用的不多 内部模块 、 外部模块 import type export (import x = require(), export=)
+// 声明类型 declare关键字 （.d.ts） 查找规范 paths > 第三方包中找 > @types
+// 引入别人的模块非ts模块 declare module declare xxx
 
 export {};
