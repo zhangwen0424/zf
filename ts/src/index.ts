@@ -34,4 +34,65 @@
 // 声明类型 declare关键字 （.d.ts） 查找规范 paths > 第三方包中找 > @types
 // 引入别人的模块非ts模块 declare module declare xxx
 
+type name = "zw"; // 模板字符串类型的目的就是将多个字符串组装在一起
+type sayHaha = `hi ${name}`; // type sayHaha = "hi zw"
+
+// 模板字符串具备一个分发的机制
+
+// marign-left margin-top margin-bottom
+type Direction = "left" | "right" | "top" | "bottom";
+type AllMargin = `margin-${Direction}`; // type AllMargin = "margin-left" | "margin-right" | "margin-top" | "margin-bottom"
+
+// scss 写颜色 red-100 red-200 red-300
+// element-plus primary-light-1 primary-light-2....
+// sku  规格 红色-10cm  黄色-20cm
+type IColor = "red" | "yellow" | "green";
+type ISize = 100 | 200 | 300;
+type ProductSKU = `${IColor}-${ISize}`; // type ProductSKU = "red-100" | "red-200" | "red-300" | "yellow-100" | "yellow-200" | "yellow-300" | "green-100" | "green-200" | "green-300"
+
+type sayHehe<T extends string | number | bigint | boolean | null | undefined> =
+  `hehe ${T}`;
+type V1 = sayHehe<"zw">; // type V1 = "hehe zw"
+type V2 = sayHehe<123>; // type V2 = "hehe 123"
+type V3 = sayHehe<123n>; // type V3 = "hehe 123"
+type V4 = sayHehe<true>; // type V4 = "hehe true"
+type V5 = sayHehe<null | undefined>; // type V5 = "hehe undefined" | "hehe null"
+type V6 = sayHehe<string>; // type V6 = `hehe ${string}`
+
+type isChild = V1 extends V6 ? true : false;
+
+type Person = { name: string; age: number; address: string };
+
+// 重命名 Person
+type RenamePerson<T, X extends keyof T> = {
+  [K in keyof T as K extends X ? `rename_${K & string}` : K]: T[K];
+};
+type a1 = RenamePerson<Person, "name">;
+
+// 针对模板字符串 内部有很多专门的类型 可以供我们使用
+// Uppercase Lowercase Capitalize Uncaptailize
+
+// 映射成函数
+type PersonGetter<T> = {
+  [K in keyof T as `get${Capitalize<K & string>}`]: () => T[K];
+};
+let person!: PersonGetter<Person>;
+type x = PersonGetter<Person>; //type x = { getName: () => string; getAge: () => number; getAddress: () => string; }
+person.getName();
+person.getAge();
+person.getAddress();
+
+// vue jsx 写法
+
+// type Emits = {a:()=>{},b:()=>{},c:()=>{}}
+// {onA:()=>{},onB:()=>{},onC:()=>{}}
+
+// 和元组的infer  [infer L,...infer R] L 是第一个
+
+// 模板字符串可以用infer
+type GetFirstName<S extends string> = S extends `${infer L} ${infer R}`
+  ? L
+  : any;
+type FirstName = GetFirstName<"zhang wen">;
+
 export {};
