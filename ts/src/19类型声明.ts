@@ -32,7 +32,7 @@ mitt.zoo;
 
 import url from "1.jpg";
 
-import $ from "jquery";
+// import $ from "jquery";
 // import bt from "is-builtin-module";
 
 // 配置 tsconfig.json 中 "moduleResolution": "node"

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script type="module">
+      // import { reactive, effect } from "../../../node_modules/@vue/reactivity/dist/reactivity.esm-browser.js";
+      import { reactive, effect } from "./reactivity.js";
+      // console.log("reactive:", reactive);
+
+      // 1) 创建一个响应式对象 reactive
+      let obj = { name: "mornki", age: 18 };
+      debugger;
+      const state1 = reactive(obj);
+      // const state2 = reactive(obj);
+      // console.log("state1:", state1 == state2);
+      debugger;
+      const state3 = reactive(state1);
+    </script>
+  </body>
+</html>
