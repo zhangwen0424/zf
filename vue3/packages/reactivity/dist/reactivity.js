@@ -30,11 +30,11 @@ function reactive(target) {
   let existingProxy = reactiveMap.get(target);
   if (existingProxy)
     return existingProxy;
-  const proxy = new Proxy(target, mutableHandle);
-  reactiveMap.set(target, proxy);
   if (target["__v_isReactive" /* IS_REACTIVE */]) {
     return target;
   }
+  const proxy = new Proxy(target, mutableHandle);
+  reactiveMap.set(target, proxy);
   return proxy;
 }
 
