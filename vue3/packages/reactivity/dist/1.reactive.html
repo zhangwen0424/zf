@@ -7,19 +7,39 @@
     <title>Document</title>
   </head>
   <body>
+    <div id="app"></div>
     <script type="module">
       // import { reactive, effect } from "../../../node_modules/@vue/reactivity/dist/reactivity.esm-browser.js";
       import { reactive, effect } from "./reactivity.js";
       // console.log("reactive:", reactive);
 
       // 1) 创建一个响应式对象 reactive
-      let obj = { name: "mornki", age: 18 };
-      debugger;
+
+      let obj = { name: "mornki", age: 18, address: "上海" };
+      const state = reactive(obj);
+      /* debugger;
       const state1 = reactive(obj);
-      // const state2 = reactive(obj);
-      // console.log("state1:", state1 == state2);
+      // 代理过的对象被二次代理，使用WeakMap做映射关系，被代理过直接返回不在去代理
+      const state2 = reactive(obj);
+      console.log("state1:", state1 == state2);
       debugger;
-      const state3 = reactive(state1);
+      // 代理过的对象再次被传入代理问题，使用ReactiveFlags.IS_REACTIVE解决
+      const state3 = reactive(state1); */
+
+      // 2) effect所有的渲染都是基于他来实现的  computed  watch 组件
+      // 默认叫响应式effect， 数据变化后会重新执行此函数
+      effect(() => {
+        // 使用类似 react-hook
+        app.innerHTML = state.name + state.age;
+        // effect(() => {
+        //   app.innerHTML = state.name;
+        // });
+        // app.innerHTML = state.address;
+      });
+
+      setTimeout(() => {
+        state.name = "mornki zhang";
+      }, 1000);
     </script>
   </body>
 </html>

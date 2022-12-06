@@ -15,9 +15,10 @@ export function reactive(target) {
   let existingProxy = reactiveMap.get(target); // 看一下这个对象是否有被代理过
   if (existingProxy) return existingProxy; // 代理过直接返回
 
-  // 第一次代理的时候值为 undefined，再次代理时,因为 target 被代理过，访问target 属性会命中代理中的 get 方法
-  // 通过代理中的 get 方法判断，如果是指定的 key，返回 target不在进行代理
+  // 判断是不是传入代理对象，是直接返回。
   if (target[ReactiveFlags.IS_REACTIVE]) {
+    // 第一次代理的时候值为 undefined，再次代理时,因为 target 被代理过，访问target 属性会命中代理中的 get 方法
+    // 通过代理中的 get 方法判断，如果是指定的 key，返回 target不在进行代理
     return target;
   }
 
