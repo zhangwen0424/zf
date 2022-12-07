@@ -23,7 +23,7 @@
       setTimeout(() => {
         state.flag = false;
         setTimeout(() => {
-          console.log("修改了 name");
+          console.log("修改了 name，这时候不需要触发 name的 effect");
           state.name = "xxx";
         });
       }, 1000);

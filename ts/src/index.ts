@@ -2,6 +2,7 @@
 // 装饰器的语法是ES7的实验性语法，装饰器不是预设版本，使用需要配置，tsconfig.json 中启用装饰器, "experimentalDecorators": true
 
 function Decorator(target: any) {
+  // 给类本身添加属性和方法;
   target.type = "动物";
   target.getType = function () {
     return this.type;
@@ -15,6 +16,7 @@ function Decorator(target: any) {
 }
 // 可以返回子类，这个子类用于重写父类
 function OverrideAnimal(target: any) {
+  // 可以直接对父类进行重写
   return class extends target {
     eat() {
       super.eat();
