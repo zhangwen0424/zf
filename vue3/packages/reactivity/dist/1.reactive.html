@@ -31,15 +31,15 @@
       effect(() => {
         // 使用类似 react-hook
         app.innerHTML = state.name + state.age;
-        // effect(() => {
-        //   app.innerHTML = state.name;
-        // });
-        // app.innerHTML = state.address;
+        effect(() => {
+          app.innerHTML = state.name;
+        });
+        app.innerHTML = state.address;
       });
 
-      setTimeout(() => {
-        state.name = "mornki zhang";
-      }, 1000);
+      // setTimeout(() => {
+      //   state.name = "mornki zhang";
+      // }, 1000);
     </script>
   </body>
 </html>

@@ -17,13 +17,10 @@ var ReactiveEffect = class {
   }
   run() {
     try {
-      this.parent = activeEffect;
       activeEffect = this;
-      cleanupEffect(this);
       return this.fn();
     } finally {
-      activeEffect = this.parent;
-      this.parent = void 0;
+      activeEffect = void 0;
     }
   }
 };
@@ -56,13 +53,6 @@ var trigger = function(target, key, newValue, oldValue) {
       effect2.run();
   });
 };
-function cleanupEffect(effect2) {
-  const { deps } = effect2;
-  for (let i = 0; i < deps.length; i++) {
-    deps[i].delete(effect2);
-  }
-  effect2.deps.lenth = 0;
-}
 
 // packages/reactivity/src/handler.ts
 var mutableHandle = {
