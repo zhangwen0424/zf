@@ -1,7 +1,13 @@
 // 类似 watch、computed
-export const effect = function (fn) {
-  const _effect = new ReactiveEffect(fn);
+export const effect = function (fn, options: any = {}) {
+  // 创建一个响应式effect,并且让effect执行
+  const _effect = new ReactiveEffect(fn, options.scheduler);
   _effect.run();
+  // 把runner方法直接给用户，用户可以去调用effect中定义的内容
+  const runner = _effect.run.bind(_effect);
+  // 可以通过runner拿到effect中所有属性
+  runner.effect = _effect;
+  return runner;
 };
 
 export let activeEffect = undefined; // 暴露为全局的，当前执行的 effect
@@ -9,10 +15,16 @@ export let activeEffect = undefined; // 暴露为全局的，当前执行的 eff
 // 存储当前 effect, ReactiveEffect类，便于扩展，实现一些方法
 export class ReactiveEffect {
   // public修饰符， 默认会将fn挂载到类的实例上
-  constructor(public fn) {}
+  constructor(public fn, public scheduler) {}
   parent = undefined;
   deps = []; // 我依赖了哪些 effect 列表
+  active = true;
   run() {
+    // 失活态默认调用run的时候 只是重新执行
+    // 不会发生依赖收集
+    if (!this.active) {
+      return this.fn();
+    }
     // 保证嵌套的 effect 能被 track
     try {
       this.parent = activeEffect;
@@ -22,6 +34,13 @@ export class ReactiveEffect {
     } finally {
       activeEffect = this.parent;
       this.parent = undefined;
+    }
+  }
+  stop() {
+    if (this.active) {
+      // 失活的意思就是停止依赖收集
+      this.active = false;
+      cleanupEffect(this);
     }
   }
 }
@@ -72,7 +91,14 @@ export const trigger = function (target, key, newValue, oldValue) {
   effects &&
     effects.forEach((effect) => {
       // 正在执行的effect ，不要多次执行
-      if (effect !== activeEffect) effect.run();
+      if (effect !== activeEffect) {
+        if (effect.scheduler) {
+          effect.scheduler(); // 用户传递了对应的更新函数则调用此函数
+          // 如果用户没有传递则默认就是重新运行effect函数
+        } else {
+          effect.run();
+        }
+      }
     });
 };
 

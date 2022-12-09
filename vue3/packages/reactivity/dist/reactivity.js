@@ -2,25 +2,45 @@
 var isObject = function(value) {
   return value != null && typeof value === "object";
 };
+var isFunction = function(value) {
+  return typeof value == "function";
+};
 
 // packages/reactivity/src/effect.ts
-var effect = function(fn) {
-  const _effect = new ReactiveEffect(fn);
+var effect = function(fn, options = {}) {
+  const _effect = new ReactiveEffect(fn, options.scheduler);
   _effect.run();
+  const runner = _effect.run.bind(_effect);
+  runner.effect = _effect;
+  return runner;
 };
 var activeEffect = void 0;
 var ReactiveEffect = class {
-  constructor(fn) {
+  constructor(fn, scheduler) {
     this.fn = fn;
+    this.scheduler = scheduler;
     this.parent = void 0;
     this.deps = [];
+    this.active = true;
   }
   run() {
+    if (!this.active) {
+      return this.fn();
+    }
     try {
+      this.parent = activeEffect;
       activeEffect = this;
+      cleanupEffect(this);
       return this.fn();
     } finally {
-      activeEffect = void 0;
+      activeEffect = this.parent;
+      this.parent = void 0;
+    }
+  }
+  stop() {
+    if (this.active) {
+      this.active = false;
+      cleanupEffect(this);
     }
   }
 };
@@ -49,24 +69,39 @@ var trigger = function(target, key, newValue, oldValue) {
   const dep = desMap.get(key);
   const effects = [...dep];
   effects && effects.forEach((effect2) => {
-    if (effect2 !== activeEffect)
-      effect2.run();
+    if (effect2 !== activeEffect) {
+      if (effect2.scheduler) {
+        effect2.scheduler();
+      } else {
+        effect2.run();
+      }
+    }
   });
 };
+function cleanupEffect(effect2) {
+  const { deps } = effect2;
+  for (let i = 0; i < deps.length; i++) {
+    deps[i].delete(effect2);
+  }
+  effect2.deps.lenth = 0;
+}
 
 // packages/reactivity/src/handler.ts
 var mutableHandle = {
   get(target, key, receiver) {
-    console.log("handler getter", key);
+    console.log("handler.js getter", key);
     if (key == "__v_isReactive" /* IS_REACTIVE */) {
       return true;
+    }
+    if (isObject(target[key])) {
+      return reactive(target[key]);
     }
     const res = Reflect.get(target, key, receiver);
     track(target, key);
     return res;
   },
   set(target, key, newValue, receiver) {
-    console.log("handler setter", key);
+    console.log("handler.js setter", key);
     let oldValue = target[key];
     const r = Reflect.set(target, key, newValue, receiver);
     if (oldValue !== newValue) {
@@ -95,13 +130,59 @@ function reactive(target) {
   reactiveMap.set(target, proxy);
   return proxy;
 }
+function isReactive(value) {
+  return value["__v_isReactive" /* IS_REACTIVE */];
+}
+
+// packages/reactivity/src/apiWatch.ts
+function watch(source, cb, options = {}) {
+  return dowatch(source, cb, options);
+}
+function watchEffect(source, options = {}) {
+  return dowatch(source, null, options);
+}
+function dowatch(source, cb, options) {
+  let getter;
+  if (isReactive(source)) {
+    getter = () => traverse(source);
+  } else if (isFunction(source)) {
+    getter = source;
+  }
+  let oldVal;
+  const effect2 = new ReactiveEffect(getter, () => {
+    if (cb) {
+      const newVal = effect2.run();
+      cb(newVal, oldVal);
+    } else {
+      effect2.run();
+    }
+  });
+  oldVal = effect2.run();
+}
+function traverse(value, seen = /* @__PURE__ */ new Set()) {
+  if (!isObject(value)) {
+    return value;
+  }
+  if (!seen.has(value)) {
+    return value;
+  }
+  seen.add(value);
+  for (const key in value) {
+    traverse(value[key], seen);
+  }
+  return value;
+}
 export {
   ReactiveEffect,
   ReactiveFlags,
   activeEffect,
+  dowatch,
   effect,
+  isReactive,
   reactive,
   track,
-  trigger
+  trigger,
+  watch,
+  watchEffect
 };
 //# sourceMappingURL=reactivity.js.map

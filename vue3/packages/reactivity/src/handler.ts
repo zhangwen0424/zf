@@ -1,13 +1,19 @@
+import { isObject } from "@vue/shared";
 import { track, trigger } from "./effect";
-import { ReactiveFlags } from "./reactive";
+import { reactive, ReactiveFlags } from "./reactive";
 
 export const mutableHandle = {
   get(target, key, receiver) {
-    console.log("handler getter", key); // 取值的时候
+    console.log("handler.js getter", key); // 取值的时候
     // debugger;
 
     if (key == ReactiveFlags.IS_REACTIVE) {
       return true; //代理过的对象再次被传入代理问题
+    }
+
+    // 如果在取值的时候发现取出来的值是对象，那么再次进行代理，返回代理后的结果
+    if (isObject(target[key])) {
+      return reactive(target[key]);
     }
 
     // 取值的时候, 让这个属性 和 effect产生关系
@@ -17,7 +23,7 @@ export const mutableHandle = {
     return res;
   },
   set(target, key, newValue, receiver) {
-    console.log("handler setter", key); // 更新值
+    console.log("handler.js setter", key); // 更新值
     // debugger;
     let oldValue = target[key];
 

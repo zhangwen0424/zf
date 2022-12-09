@@ -7,3 +7,4 @@
 // 整合文件导出
 export * from "./reactive";
 export * from "./effect";
+export * from "./apiWatch";

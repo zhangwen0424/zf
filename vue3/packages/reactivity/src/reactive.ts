@@ -31,3 +31,7 @@ export function reactive(target) {
 
   return proxy;
 }
+
+export function isReactive(value) {
+  return value[ReactiveFlags["IS_REACTIVE"]];
+}
