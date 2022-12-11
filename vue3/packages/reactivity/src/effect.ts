@@ -14,8 +14,8 @@ export let activeEffect = undefined; // 暴露为全局的，当前执行的 eff
 
 // 存储当前 effect, ReactiveEffect类，便于扩展，实现一些方法
 export class ReactiveEffect {
-  // public修饰符， 默认会将fn挂载到类的实例上
-  constructor(public fn, public scheduler) {}
+  // public修饰符， 默认会将fn挂载到类的实例上, scheduler可不传
+  constructor(private fn, public scheduler?) {}
   parent = undefined;
   deps = []; // 我依赖了哪些 effect 列表
   active = true;

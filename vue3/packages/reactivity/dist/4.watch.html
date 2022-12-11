@@ -58,24 +58,33 @@
         });
       }
       // 如何解决这个问题 在v2里面怎么解决
+      // vue3使用 onCleanup，vue2 中没有此方法，需要自己处理
       // 什么是闭包?  我定义函数的作用域和执行函数的作用域不是同一个
-      let arr = []; // 用于存储上一次的清理操作
+      // let arr = []; // 用于存储上一次的清理操作
       watch(
         () => state.age,
         async function (newVal, oldVal, onCleanup) {
-          while (arr.length) {
-            let fn = arr.shift();
-            fn();
-          }
-
           let flag = true;
+          // while (arr.length > 0) {
+          //   let fn = arr.shift();
+          //   fn();
+          // }
+          // arr.push(function () {
+          //   flag = false;
+          // });
+
           onCleanup(function () {
-            //
+            // 取消操作 1） 取消请求  2） 清理  3） 屏蔽
+            flag = false;
           });
+
+          // if (flag) {
           let r = await getData(newVal);
           console.log("r", r);
-          app.innerHTML = r;
-        }
+          // }
+          flag && (app.innerHTML = r);
+        },
+        { flush: "sync" }
       );
       // 模拟用户输入1234
       state.age = 11; // 请求2s返回 100

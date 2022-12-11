@@ -149,14 +149,21 @@ function dowatch(source, cb, options) {
     getter = source;
   }
   let oldVal;
-  const effect2 = new ReactiveEffect(getter, () => {
+  let clear;
+  let onCleanup = (fn) => {
+    clear = fn;
+  };
+  const job = () => {
     if (cb) {
+      if (clear)
+        clear();
       const newVal = effect2.run();
-      cb(newVal, oldVal);
+      cb(newVal, oldVal, onCleanup);
     } else {
       effect2.run();
     }
-  });
+  };
+  const effect2 = new ReactiveEffect(getter, job);
   oldVal = effect2.run();
 }
 function traverse(value, seen = /* @__PURE__ */ new Set()) {
@@ -172,10 +179,44 @@ function traverse(value, seen = /* @__PURE__ */ new Set()) {
   }
   return value;
 }
+
+// packages/reactivity/src/computed.ts
+function computed(getterOrOptions) {
+  let getter, setter;
+  if (isFunction(getterOrOptions)) {
+    getter = getterOrOptions;
+    setter = () => {
+      console.log("warn");
+    };
+  } else {
+    getter = getterOrOptions.get;
+    setter = getterOrOptions.get;
+  }
+  return new computedRefImple(getter, setter);
+}
+var computedRefImple = class {
+  constructor(getter, setter) {
+    this.setter = setter;
+    this._dirty = true;
+    this.effect = new ReactiveEffect(getter, () => {
+    });
+  }
+  get value() {
+    if (this._dirty) {
+      this._value = this.effect.run();
+      this._dirty = false;
+    }
+    return this._value;
+  }
+  set value(newVal) {
+    this.setter(newVal);
+  }
+};
 export {
   ReactiveEffect,
   ReactiveFlags,
   activeEffect,
+  computed,
   dowatch,
   effect,
   isReactive,

@@ -20,19 +20,26 @@ export function dowatch(source, cb, options) {
   } else if (isFunction(source)) {
     getter = source;
   }
-  // const job = () => {};
   let oldVal;
+  // 里面的属性就会收集当前的effect
+  // 如果数据变化后会执行对应scheduler方法
+  let clear;
+  let onCleanup = (fn) => {
+    clear = fn;
+  };
   // debugger;
-  // ReactiveEffect中fn 里面的属性就会收集当前的effect
-  // 如果数据变化后会执行对应scheduler方法,在这个方法我们手动的执行 run
-  const effect = new ReactiveEffect(getter, () => {
+  const job = () => {
     if (cb) {
+      if (clear) clear(); // 下次执行的时候将上次的执行一下
       const newVal = effect.run();
-      cb(newVal, oldVal);
+      cb(newVal, oldVal, onCleanup);
     } else {
       effect.run(); // watchEffect 只需要运行自身就可以了
     }
-  });
+  };
+  // ReactiveEffect中fn 里面的属性就会收集当前的effect
+  // 如果数据变化后会执行对应scheduler方法,在这个方法我们手动的执行 run
+  const effect = new ReactiveEffect(getter, job);
   oldVal = effect.run(); // 这里调用会让ReactiveEffect中 getter 跑一遍，让属性和effect关联在一起
 }
 
