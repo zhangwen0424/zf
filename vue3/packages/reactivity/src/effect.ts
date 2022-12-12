@@ -68,16 +68,20 @@ export const track = function (target, key) {
       desMap.set(key, (dep = new Set()));
     }
     // 如果有则看一下set中有没有这个effect
-    let shouldTrack = !dep.has(activeEffect);
-    if (shouldTrack) {
-      // name = new Set(effect)
-      // age = new Set(effect)
-      dep.add(activeEffect);
-      // 我可以通过当前的effect 找到这两个集合中的自己。将其移除掉就可以了
-      activeEffect.deps.push(dep);
-    }
+    trackEffects(dep);
   }
 };
+// 方法拆分
+export function trackEffects(dep) {
+  let shouldTrack = !dep.has(activeEffect);
+  if (shouldTrack) {
+    // name = new Set(effect)
+    // age = new Set(effect)
+    dep.add(activeEffect);
+    // 我可以通过当前的effect 找到这两个集合中的自己。将其移除掉就可以了
+    activeEffect.deps.push(dep);
+  }
+}
 
 // 触发依赖
 export const trigger = function (target, key, newValue, oldValue) {
@@ -85,6 +89,9 @@ export const trigger = function (target, key, newValue, oldValue) {
   const desMap = targetMap.get(target);
   if (!desMap) return;
   const dep = desMap.get(key); // name 或者 age对应的所有effect
+  triggerEffects(dep);
+};
+export function triggerEffects(dep) {
   const effects = [...dep];
   // debugger;
   // 运行的是数组 删除的是set
@@ -100,7 +107,7 @@ export const trigger = function (target, key, newValue, oldValue) {
         }
       }
     });
-};
+}
 
 // 在收集的列表中将自己移除掉
 function cleanupEffect(effect) {

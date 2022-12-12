@@ -55,18 +55,24 @@ var track = function(target, key) {
     if (!dep) {
       desMap.set(key, dep = /* @__PURE__ */ new Set());
     }
-    let shouldTrack = !dep.has(activeEffect);
-    if (shouldTrack) {
-      dep.add(activeEffect);
-      activeEffect.deps.push(dep);
-    }
+    trackEffects(dep);
   }
 };
+function trackEffects(dep) {
+  let shouldTrack = !dep.has(activeEffect);
+  if (shouldTrack) {
+    dep.add(activeEffect);
+    activeEffect.deps.push(dep);
+  }
+}
 var trigger = function(target, key, newValue, oldValue) {
   const desMap = targetMap.get(target);
   if (!desMap)
     return;
   const dep = desMap.get(key);
+  triggerEffects(dep);
+};
+function triggerEffects(dep) {
   const effects = [...dep];
   effects && effects.forEach((effect2) => {
     if (effect2 !== activeEffect) {
@@ -77,7 +83,7 @@ var trigger = function(target, key, newValue, oldValue) {
       }
     }
   });
-};
+}
 function cleanupEffect(effect2) {
   const { deps } = effect2;
   for (let i = 0; i < deps.length; i++) {
@@ -198,10 +204,12 @@ var computedRefImple = class {
   constructor(getter, setter) {
     this.setter = setter;
     this._dirty = true;
+    this.dep = /* @__PURE__ */ new Set();
     this.effect = new ReactiveEffect(getter, () => {
     });
   }
   get value() {
+    trackEffects(this.dep);
     if (this._dirty) {
       this._value = this.effect.run();
       this._dirty = false;
@@ -222,7 +230,9 @@ export {
   isReactive,
   reactive,
   track,
+  trackEffects,
   trigger,
+  triggerEffects,
   watch,
   watchEffect
 };

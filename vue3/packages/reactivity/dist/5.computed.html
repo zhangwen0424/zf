@@ -45,10 +45,16 @@
         },
       });
       const state = reactive({ firstname: "a", lastname: "b", fullname });
+
       // fullname.value = 100;
       console.log("fullname:", fullname.value);
+      setTimeout(() => {
+        state.firstname = "hello";
+      }, 1000);
       console.log("fullname:", fullname.value);
-      console.log("fullname:", fullname.value);
+      effect(() => {
+        app.innerHTML = state.fullname.vlaue;
+      });
 
       // computedRefImpl,普通值是死值
       /* let number = 100;

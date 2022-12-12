@@ -1,5 +1,5 @@
 import { isFunction } from "@vue/shared";
-import { ReactiveEffect } from "./effect";
+import { activeEffect, ReactiveEffect, trackEffects } from "./effect";
 
 export function computed(getterOrOptions) {
   let getter, setter;
@@ -16,14 +16,20 @@ export function computed(getterOrOptions) {
   return new computedRefImple(getter, setter);
 }
 
+// 对象： 属性 ： effect
 class computedRefImple {
   public effect;
   public _value;
   public _dirty = true; // 实现缓存效果
+  public dep = new Set();
   constructor(getter, public setter) {
     this.effect = new ReactiveEffect(getter, () => {});
+    // 当依赖的值发生变化了 也应该触发更新
   }
   get value() {
+    // 在取值时 要对计算属性也做依赖收集
+    // 如果计算属性是在 effect中使用的要做依赖收集
+    trackEffects(this.dep);
     if (this._dirty) {
       this._value = this.effect.run();
       this._dirty = false;
