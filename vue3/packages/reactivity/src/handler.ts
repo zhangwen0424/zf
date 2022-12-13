@@ -11,6 +11,11 @@ export const mutableHandle = {
       return true; //代理过的对象再次被传入代理问题
     }
 
+    // 如果是 ref 的值，从 value 中取出来
+    if (target[key] && target[key].__v_isRef) {
+      return target[key].value;
+    }
+
     // 如果在取值的时候发现取出来的值是对象，那么再次进行代理，返回代理后的结果
     if (isObject(target[key])) {
       return reactive(target[key]);

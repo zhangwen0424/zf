@@ -99,6 +99,9 @@ var mutableHandle = {
     if (key == "__v_isReactive" /* IS_REACTIVE */) {
       return true;
     }
+    if (target[key] && target[key].__v_isRef) {
+      return target[key].value;
+    }
     if (isObject(target[key])) {
       return reactive(target[key]);
     }
@@ -196,7 +199,7 @@ function computed(getterOrOptions) {
     };
   } else {
     getter = getterOrOptions.get;
-    setter = getterOrOptions.get;
+    setter = getterOrOptions.set;
   }
   return new computedRefImple(getter, setter);
 }
@@ -205,7 +208,10 @@ var computedRefImple = class {
     this.setter = setter;
     this._dirty = true;
     this.dep = /* @__PURE__ */ new Set();
+    this.__v_isRef = true;
     this.effect = new ReactiveEffect(getter, () => {
+      this._dirty = true;
+      triggerEffects(this.dep);
     });
   }
   get value() {

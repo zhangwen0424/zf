@@ -45,16 +45,16 @@
         },
       });
       const state = reactive({ firstname: "a", lastname: "b", fullname });
-
+      effect(() => {
+        // app.innerHTML = fullname.value; //访问 fullname 需要加 value
+        app.innerHTML = state.fullname; //getter方法中增加拆包后不用每次都.value取值
+      });
       // fullname.value = 100;
-      console.log("fullname:", fullname.value);
+      // console.log("fullname:", fullname);
       setTimeout(() => {
         state.firstname = "hello";
       }, 1000);
-      console.log("fullname:", fullname.value);
-      effect(() => {
-        app.innerHTML = state.fullname.vlaue;
-      });
+      // console.log("fullname:", fullname);
 
       // computedRefImpl,普通值是死值
       /* let number = 100;

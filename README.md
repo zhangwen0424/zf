@@ -158,10 +158,52 @@
     - stop 停止响应式
 
       - `runner.effect.stop();`
-      - ## 在 effect 上添加属性 active,默认激活，失活状态下不触发响应式、不收集依赖
-        ```
-        if (this.active) {
-          this.active = false;
-          cleanupEffect(this);
-        }
-        ```
+      - 在 effect 上添加属性 active,默认激活，失活状态下不触发响应式、不收集依赖
+
+      ```
+      if (this.active) {
+        this.active = false;
+        cleanupEffect(this);
+      }
+      ```
+
+## computed
+
+- 可传对象，可传方法，传方法就是 geter，传对象可传 setter
+  `return new computedRefImple(getter, setter);`
+
+  ```
+  const fullname = computed({
+    get() {
+      console.log("getter");
+      return state.firstname + state.lastname;
+    },
+    set(val) {
+      console.log("setter");
+      // 改计算属性可以导致修改其他属性
+      console.log(val);
+    },
+  });
+  ```
+
+- get
+- set
+- computedRefImple(getter,setter)
+
+  - contructor
+
+    ```
+    this.effect = new ReactiveEffect(getter, () => {
+    this._dirty = true; // 依赖的值发生变化了 会将dirty变为true
+      // 当依赖的值发生变化了 也应该触发更新
+      triggerEffects(this.dep);
+    });
+    ```
+
+    - `_value`缓存值
+    - effect 依赖收集
+    - dep 依赖项
+    - `_dirty` 缓存，值更新设置为 true，取值时判断为 true 重新取值，为 false 取缓存的值
+
+  - `__v_isRef` 增加标记使免于使用.value 的取值
+  <!-- -  -->
