@@ -89,8 +89,38 @@ function cleanupEffect(effect2) {
   for (let i = 0; i < deps.length; i++) {
     deps[i].delete(effect2);
   }
-  effect2.deps.lenth = 0;
+  effect2.deps.length = 0;
 }
+
+// packages/reactivity/src/ref.ts
+function isRef(value) {
+  return !!(value && value.__v_isRef);
+}
+function ref(value) {
+  return new RefImp(value);
+}
+function toReactive(value) {
+  return isObject(value) ? reactive(value) : value;
+}
+var RefImp = class {
+  constructor(rawValue) {
+    this.rawValue = rawValue;
+    this.dep = /* @__PURE__ */ new Set();
+    this.__v_isRef = true;
+    this._value = toReactive(rawValue);
+  }
+  get value() {
+    trackEffects(this.dep);
+    return this._value;
+  }
+  set value(newVal) {
+    if (newVal !== this.rawValue) {
+      this.rawValue = newVal;
+      this._value = toReactive(newVal);
+      triggerEffects(this.dep);
+    }
+  }
+};
 
 // packages/reactivity/src/handler.ts
 var mutableHandle = {
@@ -99,7 +129,7 @@ var mutableHandle = {
     if (key == "__v_isReactive" /* IS_REACTIVE */) {
       return true;
     }
-    if (target[key] && target[key].__v_isRef) {
+    if (isRef(target[key])) {
       return target[key].value;
     }
     if (isObject(target[key])) {
@@ -234,7 +264,10 @@ export {
   dowatch,
   effect,
   isReactive,
+  isRef,
   reactive,
+  ref,
+  toReactive,
   track,
   trackEffects,
   trigger,

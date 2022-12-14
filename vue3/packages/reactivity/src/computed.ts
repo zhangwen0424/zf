@@ -1,10 +1,5 @@
 import { isFunction } from "@vue/shared";
-import {
-  activeEffect,
-  ReactiveEffect,
-  trackEffects,
-  triggerEffects,
-} from "./effect";
+import { ReactiveEffect, trackEffects, triggerEffects } from "./effect";
 
 export function computed(getterOrOptions) {
   let getter, setter;

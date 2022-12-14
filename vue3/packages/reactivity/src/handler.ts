@@ -1,6 +1,7 @@
 import { isObject } from "@vue/shared";
 import { track, trigger } from "./effect";
 import { reactive, ReactiveFlags } from "./reactive";
+import { isRef } from "./ref";
 
 export const mutableHandle = {
   get(target, key, receiver) {
@@ -12,7 +13,8 @@ export const mutableHandle = {
     }
 
     // 如果是 ref 的值，从 value 中取出来
-    if (target[key] && target[key].__v_isRef) {
+    // if (target[key] && target[key].__v_isRef) {
+    if (isRef(target[key])) {
       return target[key].value;
     }
 

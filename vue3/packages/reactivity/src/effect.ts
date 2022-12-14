@@ -116,5 +116,5 @@ function cleanupEffect(effect) {
     // 找到set，让set移除掉自己
     deps[i].delete(effect);
   }
-  effect.deps.lenth = 0; // 清空依赖的列表
+  effect.deps.length = 0; // 清空依赖的列表
 }
