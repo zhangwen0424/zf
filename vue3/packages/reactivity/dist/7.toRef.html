@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      // import {
+      //   proxyRefs,
+      //   toRefs,
+      //   reactive,
+      //   effect,
+      //   watch,
+      //   watchEffect,
+      //   computed,
+      //   ref,
+      //   toRef,
+      // } from "../../../node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js";
+      import {
+        proxyRefs,
+        toRefs,
+        toRef,
+        ref,
+        computed,
+        reactive,
+        effect,
+        watch,
+        watchEffect,
+      } from "./reactivity.js";
+      const state = reactive({ name: "zw", age: 18 });
+      // let name = state.name;//这样取值，后面改了 state.name会失去响应式
+
+      // 将reactive中的值转换成ref来使用,一个个转
+      // let name = toRef(state, "name"); // 告诉将state中的name属性转换成ref
+      // let age = toRef(state, "age");
+      // console.log("name", name);
+
+      // 使用 toRef、toRefs 从 reactive 只取值响应式不会丢失，相当于做了个代理，当取 name.value时从 state.name中去取
+      let { name, age } = toRefs(state); // 响应式数据的解构
+      watchEffect(() => {
+        // 代理模式 proxy
+        // app.innerHTML = name.value + "-" + age.value; // name.value => state.name
+
+        // 如果在页面渲染的时候 （vue中的模版使用ref值的时候会自动脱ref）
+        // let a = ref("a")
+        // <template>{{a}}</template>
+        // 模拟脱 ref，模板编译中使用，自己开发中不会用，ctx.name ->  name.value -> state.name
+        let ctx = proxyRefs({ name, age });
+        app.innerHTML = ctx.name + "_" + ctx.age;
+      });
+      setTimeout(() => {
+        state.name = "xxx";
+      }, 1000);
+
+      // toRef  toRefs  ref  proxyRefs  isRef
+      // shallowRef () component:is语法 比较少用
+    </script>
+  </body>
+</html>

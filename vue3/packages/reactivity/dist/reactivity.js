@@ -121,6 +121,46 @@ var RefImp = class {
     }
   }
 };
+var ObjectRefImpl = class {
+  constructor(_object, _key) {
+    this._object = _object;
+    this._key = _key;
+    this.__v_isRef = true;
+  }
+  get value() {
+    return this._object[this._key];
+  }
+  set value(newVal) {
+    this._object[this._key] = newVal;
+  }
+};
+function toRef(object, key) {
+  return new ObjectRefImpl(object, key);
+}
+function toRefs(object) {
+  let ret = Array.isArray(object) ? new Array(object.length) : /* @__PURE__ */ Object.create(null);
+  for (let key in object) {
+    ret[key] = toRef(object, key);
+  }
+  return ret;
+}
+function proxyRefs(object) {
+  return new Proxy(object, {
+    get(target, key, receiver) {
+      let v = Reflect.get(target, key, receiver);
+      return isRef(v) ? v.value : v;
+    },
+    set(target, key, value, receiver) {
+      let oldValue = Reflect.get(target, key, receiver);
+      if (isRef(oldValue)) {
+        oldValue.value = value;
+        return true;
+      } else {
+        return Reflect.set(target, key, value, receiver);
+      }
+    }
+  });
+}
 
 // packages/reactivity/src/handler.ts
 var mutableHandle = {
@@ -265,9 +305,12 @@ export {
   effect,
   isReactive,
   isRef,
+  proxyRefs,
   reactive,
   ref,
   toReactive,
+  toRef,
+  toRefs,
   track,
   trackEffects,
   trigger,
