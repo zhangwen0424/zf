@@ -122,6 +122,16 @@ function createRenderer(renderOptions2) {
   };
 }
 
+// packages/runtime-core/src/h.ts
+function h(type, propsOrChildren, children) {
+  const l = arguments.length;
+  if (l === 2) {
+  } else {
+    if (l > 3) {
+    }
+  }
+}
+
 // packages/shared/src/index.ts
 var isString = function(value) {
   return typeof value === "string";
@@ -167,6 +177,7 @@ function render(vnode, container) {
 export {
   createRenderer2 as createRenderer,
   createVNode,
+  h,
   isVNode,
   render
 };
