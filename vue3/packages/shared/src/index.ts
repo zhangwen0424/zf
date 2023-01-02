@@ -3,5 +3,11 @@ export const isObject = function (value) {
 };
 
 export const isFunction = function (value) {
-  return typeof value == "function";
+  return typeof value === "function";
 };
+
+export const isString = function (value) {
+  return typeof value === "string";
+};
+
+export * from "./shapeFlag";

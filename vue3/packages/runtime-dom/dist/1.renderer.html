@@ -30,21 +30,26 @@
       // 运行时 又分为两个部分  （ 核心运行时 不依赖于任何平台的   依赖某个平台的 提供一些平台对应的api方法的）
       // vue  -> (createApp)runtime-dom(浏览器的运行环境 domapi) -> runtime-core(虚拟dom) -> reactivity
 
-      // createApp -> createRenderer
+      // createApp 底层调用 -> createRenderer
 
+      // const renderer = createRenderer({}); // 创建了一个渲染器，没有提供如何将虚拟节点转成真实节点，会报错
+      // 创建渲染器同时提供方法，虚拟 dom 转化真实 dom 时会调用方法
       // const renderer = createRenderer({
-      //     createElement(element) {
-      //         return document.createElement(element)
-      //     },
-      //     setElementText(element, text) {
-      //         element.innerHTML = text;
-      //     },
-      //     insert(element, container, anchor = null) {
-      //         container.insertBefore(element, anchor)
-      //     }
-      // }); // 创建了一个渲染器，没有提供如何将虚拟节点转成真实节点
-      // h方法可以用户用不同的行为
-      // renderer.render(h('h1', 'hello'), app)
+      //   // 创建元素
+      //   createElement(element) {
+      //     return document.createElement(element);
+      //   },
+      //   // 设置元素的内容
+      //   setElementText(element, text) {
+      //     element.innerHTML = text;
+      //   },
+      //   // 把元素插入到容器中，element元素，container容器，anchor参照物
+      //   insert(element, container, anchor = null) {
+      //     container.insertBefore(element, anchor);
+      //   },
+      // });
+      // // h方法可以用户用不同的行为，h方法创建虚拟 dom
+      // renderer.render(h("h1", "hello"), app);
 
       // 所谓的渲染器 就是提供渲染api可以按照你提供的api来进行渲染
       let vDom = h("h1", "hello");
