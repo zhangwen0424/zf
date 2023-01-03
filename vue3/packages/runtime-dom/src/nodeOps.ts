@@ -10,7 +10,8 @@ export const nodeOps = {
   },
   //元素插入
   insert(element, container, anchor = null) {
-    container.inserBefore(element, anchor);
+    // appendChild(element) = inserBefore(element,null)
+    container.insertBefore(element, anchor);
   },
   // 元素删除
   remove(child) {

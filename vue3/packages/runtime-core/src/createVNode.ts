@@ -3,6 +3,10 @@ import { isString, ShapeFlags } from "@vue/shared";
 export function isVNode(value) {
   return !!value.__v_isVNode; // 用来判断是否是虚拟节点
 }
+export function isSameVnode(n1, n2) {
+  // 如果前后没key 都是undefiend ，认为key是一样的
+  return n1.type === n2.type && n1.key === n2.key;
+}
 
 // type：节点类型，props:属性，children:儿子，只能是文本、数组、null
 export function createVNode(type, props, children = null) {
