@@ -69,7 +69,7 @@ export function createRenderer(renderOptions) {
 
     // 比较前后属性的差异 diff prop
     patchProps(oldProps, newProps, el);
-    patchChild(n1, n2, el);
+    patchChildren(n1, n2, el);
   };
 
   // 比较属性差异
@@ -93,7 +93,9 @@ export function createRenderer(renderOptions) {
   };
 
   // 比较双方的儿子节点的差异
-  const patchChild = (n1, n2, el) => {
+  const patchChildren = (n1, n2, el) => {
+    // text null [] * 3  = 9 种情况
+
     // 老的是空  新的是文本  x
     // 老的儿子是文本  新的儿子是文本x
     // 老的是数组 新的是文本  x
@@ -104,7 +106,7 @@ export function createRenderer(renderOptions) {
     // -----2--
     // 老的为空  新的是数组 x
     // 新的老的都没儿子 x
-    // text null [] * 3
+
     // 全量diff算法  全量diff 就是从根开始比 ，比到最终的子节点
     // 递归先序 深度遍历  （全量diff 比较消耗性能，有些节点不需要diff） vue3 中有一种靶向更新的方式
     // 可以只比较动态节点
@@ -115,7 +117,7 @@ export function createRenderer(renderOptions) {
     // div       div
     // patchFlag + blockTree 编译优化 只有写模板的时候 才享受这种优化
     const c1 = n1.children;
-    const c2 = n2.childen;
+    const c2 = n2.children;
 
     const prevShapeFlag = n1.shapeFlag; // 之前的形状
     const shapeFlag = n2.shapeFlag; // 之后的形状
@@ -130,11 +132,13 @@ export function createRenderer(renderOptions) {
       if (c1 !== c2) {
         hostSetElementText(el, c2);
       }
+      // ---3---
     } else {
       // 之前是数组
       if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
         if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
           // 双方都是数组   核心diff算法  ?? todo,,,
+          patchKeyChildren(c1, c2, el);
         } else {
           // 现在是空的情况
           unmountChildren(c1);
@@ -148,8 +152,53 @@ export function createRenderer(renderOptions) {
         if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
           mountChildren(c2, el);
         }
+        // ---4--
       }
     }
+  };
+
+  // vue3 中的diff算法  1） 同序列挂载和卸载   2） 最长递增子序列 计算最小偏移量来进行更新
+
+  const patchKeyChildren = (c1, c2, el) => {
+    // 对diff算法进行优化的 , 先从前面比，在从后面比，这样可以确定，变化的部分
+    //  a b    c d
+    //  a b   e f   c  d
+
+    let i = 0; // 开头的位置
+
+    let e1 = c1.length - 1;
+    let e2 = c2.length - 1;
+
+    //  a b c
+    //  a b d
+    // 从头开始比 sync from start
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[i];
+      const n2 = c2[i];
+      if (isSameVnode(n1, n2)) {
+        patch(n1, n2, el);
+      } else {
+        break;
+      }
+      i++;
+    }
+    console.log("从头开始比:", i, e1, e2);
+
+    // 从后开始比较 sync from end
+    //     a b c
+    // d e a b c
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[e1];
+      const n2 = c2[e2];
+      if (isSameVnode(n1, n2)) {
+        patch(n1, n2, el);
+      } else {
+        break;
+      }
+      e1--;
+      e2--;
+    }
+    console.log("从后开始比:", i, e1, e2);
   };
 
   // 递归遍历 虚拟节点将其转换成真实节点
