@@ -54,7 +54,7 @@ export function createRenderer(renderOptions) {
   // 处理元素，处理挂载和更新
   const processElement = (n1, n2, container, anchor) => {
     if (n1 == null) {
-      mountElement(n2, container);
+      mountElement(n2, container, anchor);
     } else {
       // 元素更新了, 属性变化。 更新属性
       patchElement(n1, n2);
@@ -158,7 +158,6 @@ export function createRenderer(renderOptions) {
   };
 
   // vue3 中的diff算法  1） 同序列挂载和卸载   2） 最长递增子序列 计算最小偏移量来进行更新
-
   const patchKeyChildren = (c1, c2, el) => {
     // 对diff算法进行优化的 , 先从前面比，在从后面比，这样可以确定，变化的部分
     //  a b    c d
@@ -169,8 +168,6 @@ export function createRenderer(renderOptions) {
     let e1 = c1.length - 1;
     let e2 = c2.length - 1;
 
-    //  a b c
-    //  a b d
     // 从头开始比 sync from start
     while (i <= e1 && i <= e2) {
       const n1 = c1[i];
@@ -182,11 +179,12 @@ export function createRenderer(renderOptions) {
       }
       i++;
     }
-    console.log("从头开始比:", i, e1, e2);
+    //  a b c
+    //  a b d
+    //  i, e1, e2    2 2 2
+    console.log("从头开始比:", i, e1, e2); // 2 2 2
 
     // 从后开始比较 sync from end
-    //     a b c
-    // d e a b c
     while (i <= e1 && i <= e2) {
       const n1 = c1[e1];
       const n2 = c2[e2];
@@ -199,6 +197,111 @@ export function createRenderer(renderOptions) {
       e2--;
     }
     console.log("从后开始比:", i, e1, e2);
+    //     a b c  =》 2 - 3
+    // d e a b c  =》 4 - 3
+    // i=0, e1=-1, e2=1
+    // c2[e2 + 1] = a  a就是参照物
+
+    // abc    => 2
+    // abcde  => 4
+    // i=3, e1=2, e2 =4
+
+    // 插入和卸载节点
+    if (i > e1) {
+      // 新的多老的少
+      while (i <= e2) {
+        const nextPos = e2 + 1;
+        const anchor = c2[nextPos]?.el; // 获取下一个元素的el
+        // 我得知道是向前插入 还是向后插入，如果是向前插入得有参照物
+        patch(null, c2[i], el, anchor);
+        i++;
+      }
+    } else if (i > e2) {
+      // 老的多，新的少
+      while (i <= e1) {
+        unmount(c1[i]);
+        i++;
+      }
+    }
+    // abcde  => 4
+    // abc    => 2
+    // i =3 e1 = 4 e2 =2
+
+    // deabc  => 4
+    //   abc  => 2
+    // i =0 e1 = 1 e2 =-1
+
+    // --- 以上的情况 就是一些头尾的特殊操作，但是不适用其他情况----
+
+    // a b [c d e]   f g  => 4
+    // a b [d c e h] f g  => 6
+    // i =2  e1 = 4  e2 =5
+
+    // s1 - e1 [c d e]
+    // s2 - e2 [d c e h]  // 这个其实不用移动 c和e只需要将d插入到c的前面 并且追加h就可以
+
+    let s1 = i;
+    let s2 = i;
+
+    console.log("s1, s2, e1, e2: ", s1, s2, e1, e2); // 2 2 4 5
+
+    const keyToNewIndexMap = new Map();
+
+    const toBePatched = e2 - s2 + 1; // 5-2+1  新的儿子有这个么多个需要被patch
+
+    const newIndexToOldIndex = new Array(toBePatched).fill(0);
+
+    // 根据新的差异创建映射表
+    for (let i = s2; i <= e2; i++) {
+      keyToNewIndexMap.set(c2[i].key, i);
+    }
+    console.log("keyToNewIndexMap:", keyToNewIndexMap);
+
+    // 循环老的，看在新的差异映射表里面有没有，没有卸载，有的话更新或挂载
+    for (let i = s1; i <= e1; i++) {
+      const vnode = c1[i];
+      let newIndex = keyToNewIndexMap.get(vnode.key);
+      if (newIndex == undefined) {
+        // 老的里面有的新的没用
+        unmount(vnode);
+      } else {
+        // 让被patched过的索引用老节点的索引作为标识，防止出现0的情况 + 1
+        newIndexToOldIndex[newIndex - s2] = i + 1;
+        // 用老的虚拟节点 c和新的虚拟节点做比对
+        patch(vnode, c2[newIndex], el); // 这里只是比较自己的属性和儿子，并没有移动
+      }
+    }
+    // console.log(newIndexToOldIndex); // [4,3,5,0]  【1 2】
+
+    // 接下来要计算移动哪些节点 *最长递增子序列*
+    // 如何复用 key
+
+    // 考虑移动问题、和新的有老的没有问题
+    // 采用倒叙插入的方式 进行移动节点。 0 就是新增的
+    //  a b[c d e]   f g
+    //  a b[d c e h] f g   ->  [3,2,4,0] 这个数组可以用于标识哪些节点被patch过了
+    //  [c d e]   f g
+    //  [d c e h] f g   ->  [1,0,2,0] 这种情况会任务 c 是新增的，会有问题，所以需要+1
+    // dom操作 只能向某个元素前面插入 insertBefore
+    // h f
+    // e h f
+    // c e h f
+    // d c e h f
+
+    // toBePatched=4 新的中有多少个需要处理
+    for (let i = toBePatched - 1; i >= 0; i--) {
+      const curIndex = s2 + i; // 当前需要处理的元素索引 2+3  curIndex: 5,4,3,2
+      // console.log("curIndex:", curIndex);
+      const curNode = c2[curIndex]; // 当前需要处理的元素 vnode
+      const anchor = c2[curIndex + 1]?.el; // 取到了f 参照物
+      if (newIndexToOldIndex[i] == 0) {
+        // h 新的里面没有没法直接插入
+        patch(null, curNode, el, anchor);
+      } else {
+        // 已经有这个元素了直接做插入
+        hostInsert(curNode.el, el, anchor); // 不在序列中意味着此元素需要移动
+      }
+    }
   };
 
   // 递归遍历 虚拟节点将其转换成真实节点

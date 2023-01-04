@@ -177,7 +177,7 @@ function createRenderer(renderOptions2) {
   };
   const processElement = (n1, n2, container, anchor) => {
     if (n1 == null) {
-      mountElement(n2, container);
+      mountElement(n2, container, anchor);
     } else {
       patchElement(n1, n2);
     }
@@ -235,6 +235,7 @@ function createRenderer(renderOptions2) {
     }
   };
   const patchKeyChildren = (c1, c2, el) => {
+    var _a, _b;
     let i = 0;
     let e1 = c1.length - 1;
     let e2 = c2.length - 1;
@@ -261,6 +262,49 @@ function createRenderer(renderOptions2) {
       e2--;
     }
     console.log("\u4ECE\u540E\u5F00\u59CB\u6BD4:", i, e1, e2);
+    if (i > e1) {
+      while (i <= e2) {
+        const nextPos = e2 + 1;
+        const anchor = (_a = c2[nextPos]) == null ? void 0 : _a.el;
+        patch(null, c2[i], el, anchor);
+        i++;
+      }
+    } else if (i > e2) {
+      while (i <= e1) {
+        unmount(c1[i]);
+        i++;
+      }
+    }
+    let s1 = i;
+    let s2 = i;
+    console.log("s1, s2, e1, e2: ", s1, s2, e1, e2);
+    const keyToNewIndexMap = /* @__PURE__ */ new Map();
+    const toBePatched = e2 - s2 + 1;
+    const newIndexToOldIndex = new Array(toBePatched).fill(0);
+    for (let i2 = s2; i2 <= e2; i2++) {
+      keyToNewIndexMap.set(c2[i2].key, i2);
+    }
+    console.log("keyToNewIndexMap:", keyToNewIndexMap);
+    for (let i2 = s1; i2 <= e1; i2++) {
+      const vnode = c1[i2];
+      let newIndex = keyToNewIndexMap.get(vnode.key);
+      if (newIndex == void 0) {
+        unmount(vnode);
+      } else {
+        newIndexToOldIndex[newIndex - s2] = i2 + 1;
+        patch(vnode, c2[newIndex], el);
+      }
+    }
+    for (let i2 = toBePatched - 1; i2 >= 0; i2--) {
+      const curIndex = s2 + i2;
+      const curNode = c2[curIndex];
+      const anchor = (_b = c2[curIndex + 1]) == null ? void 0 : _b.el;
+      if (newIndexToOldIndex[i2] == 0) {
+        patch(null, curNode, el, anchor);
+      } else {
+        hostInsert(curNode.el, el, anchor);
+      }
+    }
   };
   const mountElement = (vnode, container, anchor = null) => {
     const { type, props, children, shapeFlag } = vnode;
