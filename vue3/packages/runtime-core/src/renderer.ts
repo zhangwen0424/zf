@@ -92,7 +92,7 @@ export function createRenderer(renderOptions) {
     }
   };
 
-  // 比较双方的儿子节点的差异
+  // 比较双方的儿子节点的差异  text null []
   const patchChildren = (n1, n2, el) => {
     // text null [] * 3  = 9 种情况
 
@@ -200,15 +200,15 @@ export function createRenderer(renderOptions) {
     //     a b c  =》 2 - 3
     // d e a b c  =》 4 - 3
     // i=0, e1=-1, e2=1
-    // c2[e2 + 1] = a  a就是参照物
+    // c2[e2 + 1] = a  a就是参照物，从 i开始循环在 a前面插入
 
     // abc    => 2
     // abcde  => 4
-    // i=3, e1=2, e2 =4
+    // i=3, e1=2, e2 =4  这时候不需要参照物，参照物为 null
 
     // 插入和卸载节点
     if (i > e1) {
-      // 新的多老的少
+      // 新的多老的少，循环新的插入
       while (i <= e2) {
         const nextPos = e2 + 1;
         const anchor = c2[nextPos]?.el; // 获取下一个元素的el
@@ -217,7 +217,7 @@ export function createRenderer(renderOptions) {
         i++;
       }
     } else if (i > e2) {
-      // 老的多，新的少
+      // 老的多，新的少，循环老的卸载
       while (i <= e1) {
         unmount(c1[i]);
         i++;
@@ -255,9 +255,14 @@ export function createRenderer(renderOptions) {
     for (let i = s2; i <= e2; i++) {
       keyToNewIndexMap.set(c2[i].key, i);
     }
-    console.log("keyToNewIndexMap:", keyToNewIndexMap);
+    console.log("keyToNewIndexMap:", keyToNewIndexMap); // Map(4) {'d' => 2, 'c' => 3, 'e' => 4, 'h' => 5}
 
     // 循环老的，看在新的差异映射表里面有没有，没有卸载，有的话更新或挂载
+    // i：新老对首不一样的索引，s1: 老的不一样的索引，s2:新的对首不一样的索引，e1:老队尾不一样的索引，e2:新队尾不一样的索引
+    // 循环老的：[c d e] 新的：Map(4) {'d' => 2, 'c' => 3, 'e' => 4, 'h' => 5}
+    // i=2,s2=2  vode:c  newIndex:3  newIndexToOldIndex:[0,3,0,0]
+    // i=3,s2=2  vode:d  newIndex:4  newIndexToOldIndex:[4,3,0,0]
+    // i=4,s2=2  vode:e  newIndex:5  newIndexToOldIndex:[4,3,5,0]
     for (let i = s1; i <= e1; i++) {
       const vnode = c1[i];
       let newIndex = keyToNewIndexMap.get(vnode.key);
