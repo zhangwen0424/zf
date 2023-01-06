@@ -1,5 +1,6 @@
 import { ShapeFlags } from "@vue/shared";
 import { isSameVnode } from "./createVNode";
+import { getSeq } from "./seq";
 
 // 创建渲染器
 export function createRenderer(renderOptions) {
@@ -249,20 +250,20 @@ export function createRenderer(renderOptions) {
 
     const toBePatched = e2 - s2 + 1; // 5-2+1  新的儿子有这个么多个需要被patch
 
-    const newIndexToOldIndex = new Array(toBePatched).fill(0);
+    const newIndexToOldIndex = new Array(toBePatched).fill(0); // 记录老差异在新的里面对应的索引值，数组中值为 0 证明需要新增
 
     // 根据新的差异创建映射表
     for (let i = s2; i <= e2; i++) {
       keyToNewIndexMap.set(c2[i].key, i);
     }
-    console.log("keyToNewIndexMap:", keyToNewIndexMap); // Map(4) {'d' => 2, 'c' => 3, 'e' => 4, 'h' => 5}
+    // console.log("keyToNewIndexMap:", keyToNewIndexMap); // Map(4) {'d' => 2, 'c' => 3, 'e' => 4, 'h' => 5}
 
     // 循环老的，看在新的差异映射表里面有没有，没有卸载，有的话更新或挂载
     // i：新老对首不一样的索引，s1: 老的不一样的索引，s2:新的对首不一样的索引，e1:老队尾不一样的索引，e2:新队尾不一样的索引
     // 循环老的：[c d e] 新的：Map(4) {'d' => 2, 'c' => 3, 'e' => 4, 'h' => 5}
     // i=2,s2=2  vode:c  newIndex:3  newIndexToOldIndex:[0,3,0,0]
-    // i=3,s2=2  vode:d  newIndex:4  newIndexToOldIndex:[4,3,0,0]
-    // i=4,s2=2  vode:e  newIndex:5  newIndexToOldIndex:[4,3,5,0]
+    // i=3,s2=2  vode:d  newIndex:2  newIndexToOldIndex:[4,3,0,0]
+    // i=4,s2=2  vode:e  newIndex:4  newIndexToOldIndex:[4,3,5,0]
     for (let i = s1; i <= e1; i++) {
       const vnode = c1[i];
       let newIndex = keyToNewIndexMap.get(vnode.key);
@@ -276,11 +277,20 @@ export function createRenderer(renderOptions) {
         patch(vnode, c2[newIndex], el); // 这里只是比较自己的属性和儿子，并没有移动
       }
     }
-    // console.log(newIndexToOldIndex); // [4,3,5,0]  【1 2】
+
+    // console.log(newIndexToOldIndex); // [4,3,5,0]  最长递增子序列：【1 2】
 
     // 接下来要计算移动哪些节点 *最长递增子序列*
     // 如何复用 key
 
+    // [3,7,9,2, 8,10]  根据数组中的值求出 对应递增子序列的索引，当倒叙插入的时候跳过对应的索引即可
+    // [0,1,2,5]
+
+    // 求最长递增子序列对应的索引
+    const increasingNewIndexSequence = getSeq(newIndexToOldIndex); // [1, 2]
+    // const increasingNewIndexSequence = getSeq([3, 5, 7, 4, 2, 8, 9, 11, 6, 10]); // [1, 2]
+    console.log("increasingNewIndexSequence:", increasingNewIndexSequence);
+    let j = increasingNewIndexSequence.length - 1; // 取出数组的最后一个索引
     // 考虑移动问题、和新的有老的没有问题
     // 采用倒叙插入的方式 进行移动节点。 0 就是新增的
     //  a b[c d e]   f g
@@ -299,12 +309,19 @@ export function createRenderer(renderOptions) {
       // console.log("curIndex:", curIndex);
       const curNode = c2[curIndex]; // 当前需要处理的元素 vnode
       const anchor = c2[curIndex + 1]?.el; // 取到了f 参照物
+      // patch中插入是虚拟节点做插入，hostInsert 中插入是节点做插入
       if (newIndexToOldIndex[i] == 0) {
-        // h 新的里面没有没法直接插入
+        // h 新的里面没有没法直接插入，会把元素创建出来放到el 上
         patch(null, curNode, el, anchor);
       } else {
         // 已经有这个元素了直接做插入
-        hostInsert(curNode.el, el, anchor); // 不在序列中意味着此元素需要移动
+        // 这里需要判断 当前i 和 j如果一致说明这一项不需要移动
+        if (i == increasingNewIndexSequence[j]) {
+          j--;
+          // 如果当前这一项和 序列中相等，说明不用做任何操作，直接跳过即可
+        } else {
+          hostInsert(curNode.el, el, anchor); // 不在序列中意味着此元素需要移动
+        }
       }
     }
   };

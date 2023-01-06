@@ -142,6 +142,45 @@ function createVNode(type, props, children = null) {
   return vnode;
 }
 
+// packages/runtime-core/src/seq.ts
+function getSeq(arr) {
+  const result = [0];
+  const len = arr.length;
+  let start, end, middle;
+  const p = arr.slice(0).fill(-1);
+  for (let i2 = 0; i2 < len; i2++) {
+    const arrI = arr[i2];
+    if (arrI !== 0) {
+      let resultLastIndex = result[result.length - 1];
+      if (arr[resultLastIndex] < arrI) {
+        result.push(i2);
+        p[i2] = resultLastIndex;
+        continue;
+      }
+      start = 0;
+      end = result.length - 1;
+      while (start < end) {
+        middle = (start + end) / 2 | 0;
+        if (arr[result[middle]] < arrI) {
+          start = middle + 1;
+        } else {
+          end = middle;
+        }
+      }
+      p[i2] = result[start - 1];
+      result[start] = i2;
+    }
+  }
+  console.log("p:", p, result);
+  let i = result.length;
+  let last = result[i - 1];
+  while (i-- > 0) {
+    result[i] = last;
+    last = p[last];
+  }
+  return result;
+}
+
 // packages/runtime-core/src/renderer.ts
 function createRenderer(renderOptions2) {
   const {
@@ -284,7 +323,6 @@ function createRenderer(renderOptions2) {
     for (let i2 = s2; i2 <= e2; i2++) {
       keyToNewIndexMap.set(c2[i2].key, i2);
     }
-    console.log("keyToNewIndexMap:", keyToNewIndexMap);
     for (let i2 = s1; i2 <= e1; i2++) {
       const vnode = c1[i2];
       let newIndex = keyToNewIndexMap.get(vnode.key);
@@ -295,6 +333,9 @@ function createRenderer(renderOptions2) {
         patch(vnode, c2[newIndex], el);
       }
     }
+    const increasingNewIndexSequence = getSeq(newIndexToOldIndex);
+    console.log("increasingNewIndexSequence:", increasingNewIndexSequence);
+    let j = increasingNewIndexSequence.length - 1;
     for (let i2 = toBePatched - 1; i2 >= 0; i2--) {
       const curIndex = s2 + i2;
       const curNode = c2[curIndex];
@@ -302,7 +343,11 @@ function createRenderer(renderOptions2) {
       if (newIndexToOldIndex[i2] == 0) {
         patch(null, curNode, el, anchor);
       } else {
-        hostInsert(curNode.el, el, anchor);
+        if (i2 == increasingNewIndexSequence[j]) {
+          j--;
+        } else {
+          hostInsert(curNode.el, el, anchor);
+        }
       }
     }
   };
