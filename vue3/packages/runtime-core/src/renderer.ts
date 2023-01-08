@@ -1,5 +1,5 @@
 import { ShapeFlags } from "@vue/shared";
-import { isSameVnode } from "./createVNode";
+import { Text, Fragment, isSameVnode } from "./createVNode";
 import { getSeq } from "./seq";
 
 // 创建渲染器
@@ -48,8 +48,47 @@ export function createRenderer(renderOptions) {
       unmount(n1);
       n1 = null;
     }
-    // 元素的处理，处理挂载和更新
-    processElement(n1, n2, container, anchor);
+    const { type, shapeFlag } = n2;
+    switch (type) {
+      // Text、Fragment在 createVNode中创建的，需要引进来
+      case Text:
+        // 文本节点
+        processText(n1, n2, container);
+        break;
+      case Fragment:
+        // 包裹节点
+        processFragment(n1, n2, container);
+        break;
+      default:
+        if (shapeFlag & ShapeFlags.ELEMENT) {
+          // 元素的处理，处理挂载和更新
+          processElement(n1, n2, container, anchor);
+        }
+    }
+  };
+
+  // 处理文本节点
+  const processText = (n1, n2, el) => {
+    if (n1 == null) {
+      //创建
+      hostInsert((n2.el = hostCreateText(n2.children)), el);
+    } else {
+      // 更新
+      let el = (n2.el = n1.el); //复用文本
+      if (n1.children === n2.children) {
+        return;
+      }
+      hostSetText(el, n2.children);
+    }
+  };
+
+  // 处理包裹节点，vue2 中所有的.vue 文件中template必须要有一个根节点来包裹内容
+  const processFragment = (n1, n2, el) => {
+    if (n1 == null) {
+      mountChildren(n2.children, el);
+    } else {
+      patchKeyChildren(n1.children, n2.children, el);
+    }
   };
 
   // 处理元素，处理挂载和更新
@@ -357,10 +396,13 @@ export function createRenderer(renderOptions) {
 
   // 卸载节点
   const unmount = (vnode) => {
-    const { shapeFlag } = vnode;
-    if (shapeFlag & ShapeFlags.ELEMENT) {
-      hostRemove(vnode.el); // 对于元素来说 直接删除dom即可
+    const { shapeFlag, type, children } = vnode;
+    if (type == Fragment) {
+      return unmountChildren(children);
     }
+    // if (shapeFlag & ShapeFlags.ELEMENT) {
+    hostRemove(vnode.el); // 对于元素来说 直接删除dom即可
+    // }
   };
   // 批量卸载儿子
   const unmountChildren = (children) => {

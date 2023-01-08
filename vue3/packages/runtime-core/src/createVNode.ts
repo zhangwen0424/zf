@@ -1,5 +1,6 @@
 import { isString, ShapeFlags } from "@vue/shared";
-
+export const Text = Symbol(); // 内置，文本类型
+export const Fragment = Symbol(); // 包裹节点
 export function isVNode(value) {
   return !!value.__v_isVNode; // 用来判断是否是虚拟节点
 }

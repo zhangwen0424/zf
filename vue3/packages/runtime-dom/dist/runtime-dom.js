@@ -112,6 +112,8 @@ var isString = function(value) {
 };
 
 // packages/runtime-core/src/createVNode.ts
+var Text = Symbol();
+var Fragment = Symbol();
 function isVNode(value) {
   return !!value.__v_isVNode;
 }
@@ -212,7 +214,37 @@ function createRenderer(renderOptions2) {
       unmount(n1);
       n1 = null;
     }
-    processElement(n1, n2, container, anchor);
+    const { type, shapeFlag } = n2;
+    switch (type) {
+      case Text:
+        processText(n1, n2, container);
+        break;
+      case Fragment:
+        processFragment(n1, n2, container);
+        break;
+      default:
+        if (shapeFlag & 1 /* ELEMENT */) {
+          processElement(n1, n2, container, anchor);
+        }
+    }
+  };
+  const processText = (n1, n2, el) => {
+    if (n1 == null) {
+      hostInsert(n2.el = hostCreateText(n2.children), el);
+    } else {
+      let el2 = n2.el = n1.el;
+      if (n1.children === n2.children) {
+        return;
+      }
+      hostSetText(el2, n2.children);
+    }
+  };
+  const processFragment = (n1, n2, el) => {
+    if (n1 == null) {
+      mountChildren(n2.children, el);
+    } else {
+      patchKeyChildren(n1.children, n2.children, el);
+    }
   };
   const processElement = (n1, n2, container, anchor) => {
     if (n1 == null) {
@@ -374,10 +406,11 @@ function createRenderer(renderOptions2) {
     });
   };
   const unmount = (vnode) => {
-    const { shapeFlag } = vnode;
-    if (shapeFlag & 1 /* ELEMENT */) {
-      hostRemove(vnode.el);
+    const { shapeFlag, type, children } = vnode;
+    if (type == Fragment) {
+      return unmountChildren(children);
     }
+    hostRemove(vnode.el);
   };
   const unmountChildren = (children) => {
     children.forEach((child) => {
@@ -713,8 +746,10 @@ function render(vnode, container) {
   return renderer.render(vnode, container);
 }
 export {
+  Fragment,
   ReactiveEffect,
   ReactiveFlags,
+  Text,
   activeEffect,
   computed,
   createRenderer2 as createRenderer,
