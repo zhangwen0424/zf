@@ -1,4 +1,4 @@
-import { isString, ShapeFlags } from "@vue/shared";
+import { isObject, isString, ShapeFlags } from "@vue/shared";
 export const Text = Symbol(); // 内置，文本类型
 export const Fragment = Symbol(); // 包裹节点
 export function isVNode(value) {
@@ -11,7 +11,12 @@ export function isSameVnode(n1, n2) {
 
 // type：节点类型，props:属性，children:儿子，只能是文本、数组、null
 export function createVNode(type, props, children = null) {
-  const shapeFlag = isString(type) ? ShapeFlags.ELEMENT : 0;
+  // 虚拟节点需要有一些重要的属性
+  const shapeFlag = isString(type)
+    ? ShapeFlags.ELEMENT
+    : isObject(type) // type 是对象说明是一个组件了
+    ? ShapeFlags.STATEFUL_COMPONENT
+    : 0;
   // 虚拟节点需要有一些重要的属性
   const vnode = {
     __v_isVNode: true, // 判断对象是不是虚拟节点可以采用这个字段

@@ -92,21 +92,23 @@ export const trigger = function (target, key, newValue, oldValue) {
   triggerEffects(dep);
 };
 export function triggerEffects(dep) {
-  const effects = [...dep];
-  // debugger;
-  // 运行的是数组 删除的是set
-  effects &&
-    effects.forEach((effect) => {
-      // 正在执行的effect ，不要多次执行
-      if (effect !== activeEffect) {
-        if (effect.scheduler) {
-          effect.scheduler(); // 用户传递了对应的更新函数则调用此函数
-          // 如果用户没有传递则默认就是重新运行effect函数
-        } else {
-          effect.run();
+  if (dep) {
+    const effects = [...dep];
+    // debugger;
+    // 运行的是数组 删除的是set
+    effects &&
+      effects.forEach((effect) => {
+        // 正在执行的effect ，不要多次执行
+        if (effect !== activeEffect) {
+          if (effect.scheduler) {
+            effect.scheduler(); // 用户传递了对应的更新函数则调用此函数
+            // 如果用户没有传递则默认就是重新运行effect函数
+          } else {
+            effect.run();
+          }
         }
-      }
-    });
+      });
+  }
 }
 
 // 在收集的列表中将自己移除掉

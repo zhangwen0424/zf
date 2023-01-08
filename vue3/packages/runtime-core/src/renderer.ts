@@ -1,5 +1,7 @@
+import { activeEffect, reactive, ReactiveEffect } from "@vue/reactivity";
 import { ShapeFlags } from "@vue/shared";
 import { Text, Fragment, isSameVnode } from "./createVNode";
+import { queueJob } from "./scheduler";
 import { getSeq } from "./seq";
 
 // 创建渲染器
@@ -63,6 +65,9 @@ export function createRenderer(renderOptions) {
         if (shapeFlag & ShapeFlags.ELEMENT) {
           // 元素的处理，处理挂载和更新
           processElement(n1, n2, container, anchor);
+        } else if (shapeFlag & ShapeFlags.COMPONENT) {
+          // 组件的处理
+          processComponent(n1, n2, container, anchor);
         }
     }
   };
@@ -99,6 +104,131 @@ export function createRenderer(renderOptions) {
       // 元素更新了, 属性变化。 更新属性
       patchElement(n1, n2);
     }
+  };
+
+  // 处理组件
+  const processComponent = (n1, n2, el, anchor) => {
+    if (n1 == null) {
+      mountComponent(n2, el, anchor);
+    } else {
+      updateComponent(n1, n2, el, anchor); // 组件的属性变化了,或者插槽变化了
+    }
+  };
+
+  // 挂载组件
+  const mountComponent = (n2, el, anchor) => {
+    // 1.拿到传入的 data、render
+    // 2.创建响应式数据、响应式 effect、创建组件实例
+    // 3.数据变化后会调用 componentUpdateFn进行组件的更新和挂载
+
+    // 组件的数据和渲染函数
+    const { data = () => ({}), render, props: propsOptions = {} } = n2.type; // 组件传入的 data,render
+
+    const state = reactive(data()); // 获取数据，将数据变成响应式
+
+    const instance = {
+      state,
+      isMounted: false, // 默认组件没有初始化，初始化后会将此属性isMounted true
+      subTree: null, // 要渲染的子树的虚拟节点
+      vnode: n2, // 组件的虚拟节点
+      update: null, // 用户可以自己更新组件，向外暴露 update 方法
+      attrs: {}, // 用户传递props - propsOptions, 自己无法消费的数据可以快速传递给其他组件
+      props: {}, // propsOptions
+      propsOptions: n2.type.props || {}, // 组件中接受的属性
+      proxy: null, // 用于做代理
+    }; // 用来记录组件的相关信息 getCurrentInstance
+
+    //   实例上props和attrs
+    // n2.props 是组件的虚拟节点的props
+    // n2.type.props 指的是 vuecomponent 中传的options中的 props
+    initProps(instance, n2.props); // 用用户传递给虚拟节点的props
+    // console.log(instance);
+
+    // 代理取值
+    instance.proxy = new Proxy(instance, {
+      get(target, key, receiver) {
+        const { state, props } = target;
+        // 从 state 中取值或者从 props 中取值，vue 中取值在 data 中 的还是 props 中的方便取值
+        if (state && key in state) {
+          return state[key];
+        } else if (key in props) {
+          return props[key];
+        }
+        // 通过 $attrs的取值
+        let getter = publicProperties[key];
+        if (getter) {
+          return getter(instance);
+        }
+      },
+      set(target, key, value, receiver) {
+        const { state, props } = target;
+        if (state && key in state) {
+          state[key] = value;
+          return true;
+        } else if (key in props) {
+          // props是不允许修改的
+          console.warn("不允许修改props");
+          return true;
+        }
+        return true;
+      },
+    });
+
+    const componentUpdateFn = () => {
+      // 组件要渲染的 虚拟节点是render函数返回的结果
+      // 组件有自己的虚拟节点，返回的虚拟节点 subTree
+
+      if (!instance.isMounted) {
+        // 组件没有初始化，进行初始化
+        const subTree = render.call(instance.proxy, instance.proxy); //将 proxy设置为状态
+        patch(null, subTree, el, anchor);
+        instance.isMounted = true;
+        instance.subTree = subTree; //记录第一次的 subTree
+      } else {
+        // 更新
+        const prevSubTree = instance.subTree;
+        // 这里再下次渲染前需要更新属性，更新属性后再渲染，获取最新的虚拟ODM ， n2.props 来更instance.的props
+        const nextSubTree = render.call(instance.proxy, instance.proxy);
+        instance.subTree = nextSubTree; // 更新子树的虚拟节点
+        patch(prevSubTree, nextSubTree, el, anchor);
+      }
+    };
+
+    // 当调用 render 方法时调用响应式数据收集
+    // 所以数据变化后会重新触发effect执行
+    // 每个组件相当于一个 effect
+    const effect = new ReactiveEffect(componentUpdateFn, () => {
+      // 这里我们可以延迟调用componentUpdateFn，防止数据变化重复更新出现死循环
+      // 批处理 + 去重
+      queueJob(instance.update);
+    });
+    const update = (instance.update = effect.run.bind(effect)); //把当前 this 改为 effect;
+    update();
+  };
+  // 更新组件
+  const updateComponent = (n1, n2, el, anchor) => {};
+  // 初始化属性
+  const initProps = (instance, userProps) => {
+    const attrs = {};
+    const props = {};
+    const options = instance.propsOptions || {}; // 组件上接受的props
+    if (userProps) {
+      for (let key in userProps) {
+        // 属性中应该包含属性的校验
+        const value = userProps[key];
+        if (key in options) {
+          props[key] = value;
+        } else {
+          attrs[key] = value;
+        }
+      }
+    }
+    instance.attrs = attrs;
+    instance.props = reactive(props);
+  };
+  // vue中 $attrs属性
+  const publicProperties = {
+    $attrs: (i) => i.attrs, // proxy.$attrs().c
   };
 
   // 属性差异比较
