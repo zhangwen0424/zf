@@ -1,5 +1,5 @@
 import { proxyRefs, reactive } from "@vue/reactivity";
-import { isFunction } from "@vue/shared";
+import { isFunction, ShapeFlags } from "@vue/shared";
 
 // 创建实例
 export function createComponentInstance(n2) {
@@ -16,6 +16,8 @@ export function createComponentInstance(n2) {
     proxy: null, // 用于做代理
     render: null,
     setupState: {}, // setup 的状态
+    exposed: {},
+    slots: {}, // 存储当前组件提供的插槽
   }; // 用来记录组件的属性的，相关信息的
   return instance;
 }
@@ -25,7 +27,7 @@ export function setupComponent(instance) {
   // 组件的数据和渲染函数
   // const { data = () => ({}), render, props: propsOptions = {} } = n2.type; // 组件传入的 data,render
 
-  const { props, type } = instance.vnode; // vnode = n2
+  const { props, type, children } = instance.vnode; // vnode = n2
 
   // 对于组件来说 组件保存的不是el，而是组件的实例, 复用组件的实例
   instance.vnode.component = instance;
@@ -34,6 +36,8 @@ export function setupComponent(instance) {
   // n2.props 是组件的虚拟节点的props
   // n2.type.props 指的是 vuecomponent 中传的options中的 props
   initProps(instance, props); // 用用户传递给虚拟节点的props
+  // 初始化插槽
+  initSlots(instance, children);
 
   // 代理取值
   instance.proxy = new Proxy(instance, {
@@ -82,9 +86,27 @@ export function setupComponent(instance) {
       attrs: instance.attrs,
       emit(eventName, ...args) {
         console.log("instance.attrs", instance.attrs);
+        // attrs 上面的事件名字 onMyOutEvent,  emit("myOutputEvent", "哈哈")
+        let bindName = `on${eventName[0].toUpperCase()}${eventName.slice(1)}`;
+        const handler = instance.attrs[bindName];
+        if (handler) {
+          let handlers = Array.isArray(handler) ? handler : [handler];
+          handlers.forEach((handler) => handler(...args));
+        }
       },
-      expose(exposed) {},
-      slots() {},
+      expose(exposed) {
+        // 主要用于ref ，通过ref获取组件的时候 在vue里只能获取到组件实例，但是在vue3中如果提供了
+        // exposed 则获取的就是exposed属性
+        instance.exposed = exposed;
+      },
+      slots: instance.slots,
+      // 插槽的更新
+      // 组件的生命周期
+      // vue3中的靶向更新，编译优化原理ast语法树、代码转换、代码生成
+      // 组件实现  provide\inject\....
+      // pinia vue-router原理
+      // compile()
+      // 组件、树、表格、滚动组件
     };
     const setupResult = setup(instance.props, context); // setup只会在组件初始化的时候走一次 顶替了vue2  created beforeCreate
     if (isFunction(setupResult)) {
@@ -109,6 +131,15 @@ export function setupComponent(instance) {
 // vue中 $attrs属性
 const publicProperties = {
   $attrs: (i) => i.attrs, // proxy.$attrs().c
+  $slots: (i) => i.slots, // proxy.$slots
+};
+
+// 初始化插槽
+const initSlots = (instance, children) => {
+  debugger;
+  if (instance.vnode.shapeFlag & ShapeFlags.SLOTS_CHILDREN) {
+    instance.slots = children;
+  }
 };
 
 // 初始化属性

@@ -417,14 +417,17 @@ function createComponentInstance(n2) {
     propsOptions: n2.type.props || {},
     proxy: null,
     render: null,
-    setupState: {}
+    setupState: {},
+    exposed: {},
+    slots: {}
   };
   return instance;
 }
 function setupComponent(instance) {
-  const { props, type } = instance.vnode;
+  const { props, type, children } = instance.vnode;
   instance.vnode.component = instance;
   initProps(instance, props);
+  initSlots(instance, children);
   instance.proxy = new Proxy(instance, {
     get(target, key, receiver) {
       const { state, props: props2, setupState } = target;
@@ -462,11 +465,17 @@ function setupComponent(instance) {
       attrs: instance.attrs,
       emit(eventName, ...args) {
         console.log("instance.attrs", instance.attrs);
+        let bindName = `on${eventName[0].toUpperCase()}${eventName.slice(1)}`;
+        const handler = instance.attrs[bindName];
+        if (handler) {
+          let handlers = Array.isArray(handler) ? handler : [handler];
+          handlers.forEach((handler2) => handler2(...args));
+        }
       },
       expose(exposed) {
+        instance.exposed = exposed;
       },
-      slots() {
-      }
+      slots: instance.slots
     };
     const setupResult = setup(instance.props, context);
     if (isFunction(setupResult)) {
@@ -483,7 +492,14 @@ function setupComponent(instance) {
   }
 }
 var publicProperties = {
-  $attrs: (i) => i.attrs
+  $attrs: (i) => i.attrs,
+  $slots: (i) => i.slots
+};
+var initSlots = (instance, children) => {
+  debugger;
+  if (instance.vnode.shapeFlag & 32 /* SLOTS_CHILDREN */) {
+    instance.slots = children;
+  }
 };
 var initProps = (instance, userProps) => {
   const attrs = {};
@@ -527,6 +543,8 @@ function createVNode(type, props, children = null) {
     let type2 = 0;
     if (Array.isArray(children)) {
       type2 = 16 /* ARRAY_CHILDREN */;
+    } else if (isObject(children)) {
+      type2 = 32 /* SLOTS_CHILDREN */;
     } else {
       vnode.children = String(children);
       type2 = 8 /* TEXT_CHILDREN */;

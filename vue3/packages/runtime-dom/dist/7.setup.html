@@ -36,7 +36,7 @@
         // data() {
         //   return { flag: true };
         // },
-        setup(props, { emit }) {
+        setup(props, { emit, expose, attrs, slots }) {
           //  setup(props, context) {
           // setup 函数的参数
           // props:{a:1,b:2};
@@ -50,6 +50,8 @@
           const setAge = () => {
             state.age++;
           };
+
+          expose({ setAge });
 
           // ---> setupState  适用于模版，模版用数据的话需要返回
           // return {
