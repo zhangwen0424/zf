@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      // import {
+      //   Text,
+      //   Fragment,
+      //   render,
+      //   h,
+      //   toRefs,
+      //   reactive,
+      // } from "../../../node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js";
+      import {
+        reactive,
+        toRefs,
+        Text,
+        Fragment,
+        createVNode,
+        h,
+        render,
+      } from "./runtime-dom.js";
+
+      // render 的两种使用方式
+      // 1.setup 中返回数据，render函数渲染，缺点：setup中需要把所有用到的数据都返回
+      // 2.setup中直接返回渲染函数，优点：可以直接使用 setup中的数据
+      const VueComponent = {
+        // vue2中 data 返回数据。vue3 中使用 setup
+        // data() {
+        //   return { flag: true };
+        // },
+        setup(props, { emit }) {
+          //  setup(props, context) {
+          // setup 函数的参数
+          // props:{a:1,b:2};
+          // context:attrs属性余量，emit事件触发，expose组件暴露的对象，slots插槽
+          // console.log("setup-props-context", props, context);
+
+          // 业务逻辑在vue中都在setup中编写
+          // 提高功能的耦合度
+          // setup的返回值会放到render函数的参数proxy中
+          const state = reactive({ name: "zw", age: 30 });
+          const setAge = () => {
+            state.age++;
+          };
+
+          // ---> setupState  适用于模版，模版用数据的话需要返回
+          // return {
+          //   setAge,
+          //   ...toRefs(state),
+          // }; // setup返回值需要时一个对象，这个对象可以通过proxy来取值
+
+          // 如果你希望直接渲染内容，建议直接setup中写render函数，不建议将render写到外面
+          return (proxy) => {
+            return h(Fragment, [
+              h(Text, state.name),
+              h(Text, state.age),
+              h("button", { onClick: setAge }, "修改"),
+              h(
+                "button",
+                { onClick: () => emit("myOutputEvent", "哈哈") },
+                "事件触发"
+              ), // 事件触发
+            ]);
+          };
+        },
+        props: {
+          a: Object,
+          b: Number,
+        },
+        // render(proxy) {
+        //   // proxy.name.value  prxoyRefs
+        //   return h(Fragment, [
+        //     h(Text, proxy.name),
+        //     h(Text, proxy.age),
+        //     h("button", { onClick: proxy.setAge }, "修改"),
+        //   ]);
+        // },
+      };
+      render(
+        h(VueComponent, {
+          onMyOutEvent: (val) => {
+            console.log("onMyOutEvent", val);
+          },
+        }),
+        app
+      );
+    </script>
+  </body>
+</html>

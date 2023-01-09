@@ -1,5 +1,6 @@
 import { activeEffect, reactive, ReactiveEffect } from "@vue/reactivity";
 import { ShapeFlags } from "@vue/shared";
+import { createComponentInstance, setupComponent } from "./component";
 import { Text, Fragment, isSameVnode } from "./createVNode";
 import { queueJob } from "./scheduler";
 import { getSeq } from "./seq";
@@ -119,68 +120,27 @@ export function createRenderer(renderOptions) {
   const mountComponent = (n2, el, anchor) => {
     // 1.拿到传入的 data、render
     // 2.创建响应式数据、响应式 effect、创建组件实例
-    // 3.数据变化后会调用 componentUpdateFn进行组件的更新和挂载
+    // 3.数据变化后会调用 componentUpdateFn进行组件的更新和挂载，通过批处理更新
 
-    // 组件的数据和渲染函数
-    const { data = () => ({}), render, props: propsOptions = {} } = n2.type; // 组件传入的 data,render
+    // 1 创建组件的实例
+    const instance = createComponentInstance(n2);
 
-    const state = reactive(data()); // 获取数据，将数据变成响应式
+    // 2 启动组件 给组件实例复制
+    setupComponent(instance);
 
-    const instance = {
-      state,
-      isMounted: false, // 默认组件没有初始化，初始化后会将此属性isMounted true
-      subTree: null, // 要渲染的子树的虚拟节点
-      vnode: n2, // 组件的虚拟节点
-      update: null, // 用户可以自己更新组件，向外暴露 update 方法
-      attrs: {}, // 用户传递props - propsOptions, 自己无法消费的数据可以快速传递给其他组件
-      props: {}, // propsOptions
-      propsOptions: n2.type.props || {}, // 组件中接受的属性
-      proxy: null, // 用于做代理
-    }; // 用来记录组件的相关信息 getCurrentInstance
+    // 3) 渲染组件
+    setupRendererEffect(instance, el, anchor);
+  };
 
-    //   实例上props和attrs
-    // n2.props 是组件的虚拟节点的props
-    // n2.type.props 指的是 vuecomponent 中传的options中的 props
-    initProps(instance, n2.props); // 用用户传递给虚拟节点的props
-    // console.log(instance);
-
-    // 代理取值
-    instance.proxy = new Proxy(instance, {
-      get(target, key, receiver) {
-        const { state, props } = target;
-        // 从 state 中取值或者从 props 中取值，vue 中取值在 data 中 的还是 props 中的方便取值
-        if (state && key in state) {
-          return state[key];
-        } else if (key in props) {
-          return props[key];
-        }
-        // 通过 $attrs的取值
-        let getter = publicProperties[key];
-        if (getter) {
-          return getter(instance);
-        }
-      },
-      set(target, key, value, receiver) {
-        const { state, props } = target;
-        if (state && key in state) {
-          state[key] = value;
-          return true;
-        } else if (key in props) {
-          // props是不允许修改的
-          console.warn("不允许修改props");
-          return true;
-        }
-        return true;
-      },
-    });
-
+  // 渲染组件
+  function setupRendererEffect(instance, el, anchor) {
     const componentUpdateFn = () => {
       // 组件要渲染的 虚拟节点是render函数返回的结果
       // 组件有自己的虚拟节点，返回的虚拟节点 subTree
 
       if (!instance.isMounted) {
         // 组件没有初始化，进行初始化
-        const subTree = render.call(instance.proxy, instance.proxy); //将 proxy设置为状态
+        const subTree = instance.render.call(instance.proxy, instance.proxy); //将 proxy设置为状态
         patch(null, subTree, el, anchor);
         instance.isMounted = true;
         instance.subTree = subTree; //记录第一次的 subTree
@@ -188,7 +148,15 @@ export function createRenderer(renderOptions) {
         // 更新
         const prevSubTree = instance.subTree;
         // 这里再下次渲染前需要更新属性，更新属性后再渲染，获取最新的虚拟ODM ， n2.props 来更instance.的props
-        const nextSubTree = render.call(instance.proxy, instance.proxy);
+        const next = instance.next;
+        if (next) {
+          // 说明属性有更新
+          updatePreRender(instance, next); // 因为更新前会清理依赖，所以这里更改属性不会触发渲染
+        }
+        const nextSubTree = instance.render.call(
+          instance.proxy,
+          instance.proxy
+        );
         instance.subTree = nextSubTree; // 更新子树的虚拟节点
         patch(prevSubTree, nextSubTree, el, anchor);
       }
@@ -204,31 +172,69 @@ export function createRenderer(renderOptions) {
     });
     const update = (instance.update = effect.run.bind(effect)); //把当前 this 改为 effect;
     update();
+  }
+
+  // 在渲染前记得要更新变化的属性
+  const updatePreRender = (instance, next) => {
+    instance.next = null; // 清理暂存的节点
+    instance.vnode = next; // 更新虚拟节点
+    updateProps(instance, next.props);
   };
-  // 更新组件
-  const updateComponent = (n1, n2, el, anchor) => {};
-  // 初始化属性
-  const initProps = (instance, userProps) => {
-    const attrs = {};
-    const props = {};
-    const options = instance.propsOptions || {}; // 组件上接受的props
-    if (userProps) {
-      for (let key in userProps) {
-        // 属性中应该包含属性的校验
-        const value = userProps[key];
-        if (key in options) {
-          props[key] = value;
-        } else {
-          attrs[key] = value;
-        }
+
+  // 更新新的属性
+  function updateProps(instance, nextProps) {
+    // 应该考虑一下 attrs 和 props
+    let prevProps = instance.props;
+    for (let key in nextProps) {
+      prevProps[key] = nextProps[key];
+    }
+    for (let key in prevProps) {
+      if (!(key in nextProps)) {
+        delete prevProps[key];
       }
     }
-    instance.attrs = attrs;
-    instance.props = reactive(props);
+  }
+
+  // 更新组件
+  const updateComponent = (n1, n2, el, anchor) => {
+    // 这里我们 属性发生了变化 会执行到这里
+    // 插槽更新也会执行这里
+
+    const instance = (n2.component = n1.component);
+    // debugger;
+    // 内部props是响应式的所以更新 props就能自动更新视图  vue2就是这样搞的
+    // instance.props.message = n2.props.message;
+
+    // 这里我们可以比较熟悉，如果属性发生变化了，我们调用instance.update 来处理更新逻辑，统一更新的入口
+
+    if (shouldComponentUpdate(n1, n2)) {
+      instance.next = n2; // 暂存新的虚拟节点
+      instance.update();
+    }
   };
-  // vue中 $attrs属性
-  const publicProperties = {
-    $attrs: (i) => i.attrs, // proxy.$attrs().c
+
+  // 判定属性是否需要更新
+  function shouldComponentUpdate(n1, n2) {
+    const oldProps = n1.props;
+    const newProps = n2.props;
+    return hasChanged(oldProps, newProps);
+  }
+
+  // 判定属性是否变化
+  const hasChanged = (oldProps = {}, newProps = {}) => {
+    // 直接看数量、数量后变化 就不用遍历了
+    let oldKeys = Object.keys(oldProps);
+    let newKeys = Object.keys(newProps);
+    if (oldKeys.length != newKeys.length) {
+      return true;
+    }
+    for (let i = 0; i < newKeys.length; i++) {
+      const key = newKeys[i];
+      if (newProps[key] !== oldProps[key]) {
+        return true;
+      }
+    }
+    return false;
   };
 
   // 属性差异比较

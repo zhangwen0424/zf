@@ -404,6 +404,105 @@ var computedRefImple = class {
   }
 };
 
+// packages/runtime-core/src/component.ts
+function createComponentInstance(n2) {
+  const instance = {
+    state: {},
+    isMounted: false,
+    subTree: null,
+    vnode: n2,
+    update: null,
+    attrs: {},
+    props: {},
+    propsOptions: n2.type.props || {},
+    proxy: null,
+    render: null,
+    setupState: {}
+  };
+  return instance;
+}
+function setupComponent(instance) {
+  const { props, type } = instance.vnode;
+  instance.vnode.component = instance;
+  initProps(instance, props);
+  instance.proxy = new Proxy(instance, {
+    get(target, key, receiver) {
+      const { state, props: props2, setupState } = target;
+      if (key in setupState) {
+        return setupState[key];
+      }
+      if (state && key in state) {
+        return state[key];
+      } else if (key in props2) {
+        return props2[key];
+      }
+      let getter = publicProperties[key];
+      if (getter) {
+        return getter(instance);
+      }
+    },
+    set(target, key, value, receiver) {
+      const { state, props: props2, setupState } = target;
+      if (key in setupState) {
+        setupState[key] = value;
+        return true;
+      } else if (state && key in state) {
+        state[key] = value;
+        return true;
+      } else if (key in props2) {
+        console.warn("\u4E0D\u5141\u8BB8\u4FEE\u6539props");
+        return true;
+      }
+      return true;
+    }
+  });
+  let { data, render: render2, setup } = type;
+  if (setup) {
+    const context = {
+      attrs: instance.attrs,
+      emit(eventName, ...args) {
+        console.log("instance.attrs", instance.attrs);
+      },
+      expose(exposed) {
+      },
+      slots() {
+      }
+    };
+    const setupResult = setup(instance.props, context);
+    if (isFunction(setupResult)) {
+      instance.render = setupResult;
+    } else {
+      instance.setupState = proxyRefs(setupResult);
+    }
+  }
+  if (isFunction(data)) {
+    instance.state = reactive(data.call(instance.proxy));
+  }
+  if (!instance.render) {
+    instance.render = render2;
+  }
+}
+var publicProperties = {
+  $attrs: (i) => i.attrs
+};
+var initProps = (instance, userProps) => {
+  const attrs = {};
+  const props = {};
+  const options = instance.propsOptions || {};
+  if (userProps) {
+    for (let key in userProps) {
+      const value = userProps[key];
+      if (key in options) {
+        props[key] = value;
+      } else {
+        attrs[key] = value;
+      }
+    }
+  }
+  instance.attrs = attrs;
+  instance.props = reactive(props);
+};
+
 // packages/runtime-core/src/createVNode.ts
 var Text = Symbol();
 var Fragment = Symbol();
@@ -579,54 +678,27 @@ function createRenderer(renderOptions2) {
     }
   };
   const mountComponent = (n2, el, anchor) => {
-    const { data = () => ({}), render: render3, props: propsOptions = {} } = n2.type;
-    const state = reactive(data());
-    const instance = {
-      state,
-      isMounted: false,
-      subTree: null,
-      vnode: n2,
-      update: null,
-      attrs: {},
-      props: {},
-      propsOptions: n2.type.props || {},
-      proxy: null
-    };
-    initProps(instance, n2.props);
-    instance.proxy = new Proxy(instance, {
-      get(target, key, receiver) {
-        const { state: state2, props } = target;
-        if (state2 && key in state2) {
-          return state2[key];
-        } else if (key in props) {
-          return props[key];
-        }
-        let getter = publicProperties[key];
-        if (getter) {
-          return getter(instance);
-        }
-      },
-      set(target, key, value, receiver) {
-        const { state: state2, props } = target;
-        if (state2 && key in state2) {
-          state2[key] = value;
-          return true;
-        } else if (key in props) {
-          console.warn("\u4E0D\u5141\u8BB8\u4FEE\u6539props");
-          return true;
-        }
-        return true;
-      }
-    });
+    const instance = createComponentInstance(n2);
+    setupComponent(instance);
+    setupRendererEffect(instance, el, anchor);
+  };
+  function setupRendererEffect(instance, el, anchor) {
     const componentUpdateFn = () => {
       if (!instance.isMounted) {
-        const subTree = render3.call(instance.proxy, instance.proxy);
+        const subTree = instance.render.call(instance.proxy, instance.proxy);
         patch(null, subTree, el, anchor);
         instance.isMounted = true;
         instance.subTree = subTree;
       } else {
         const prevSubTree = instance.subTree;
-        const nextSubTree = render3.call(instance.proxy, instance.proxy);
+        const next = instance.next;
+        if (next) {
+          updatePreRender(instance, next);
+        }
+        const nextSubTree = instance.render.call(
+          instance.proxy,
+          instance.proxy
+        );
         instance.subTree = nextSubTree;
         patch(prevSubTree, nextSubTree, el, anchor);
       }
@@ -636,28 +708,48 @@ function createRenderer(renderOptions2) {
     });
     const update = instance.update = effect2.run.bind(effect2);
     update();
+  }
+  const updatePreRender = (instance, next) => {
+    instance.next = null;
+    instance.vnode = next;
+    updateProps(instance, next.props);
   };
-  const updateComponent = (n1, n2, el, anchor) => {
-  };
-  const initProps = (instance, userProps) => {
-    const attrs = {};
-    const props = {};
-    const options = instance.propsOptions || {};
-    if (userProps) {
-      for (let key in userProps) {
-        const value = userProps[key];
-        if (key in options) {
-          props[key] = value;
-        } else {
-          attrs[key] = value;
-        }
+  function updateProps(instance, nextProps) {
+    let prevProps = instance.props;
+    for (let key in nextProps) {
+      prevProps[key] = nextProps[key];
+    }
+    for (let key in prevProps) {
+      if (!(key in nextProps)) {
+        delete prevProps[key];
       }
     }
-    instance.attrs = attrs;
-    instance.props = reactive(props);
+  }
+  const updateComponent = (n1, n2, el, anchor) => {
+    const instance = n2.component = n1.component;
+    if (shouldComponentUpdate(n1, n2)) {
+      instance.next = n2;
+      instance.update();
+    }
   };
-  const publicProperties = {
-    $attrs: (i) => i.attrs
+  function shouldComponentUpdate(n1, n2) {
+    const oldProps = n1.props;
+    const newProps = n2.props;
+    return hasChanged(oldProps, newProps);
+  }
+  const hasChanged = (oldProps = {}, newProps = {}) => {
+    let oldKeys = Object.keys(oldProps);
+    let newKeys = Object.keys(newProps);
+    if (oldKeys.length != newKeys.length) {
+      return true;
+    }
+    for (let i = 0; i < newKeys.length; i++) {
+      const key = newKeys[i];
+      if (newProps[key] !== oldProps[key]) {
+        return true;
+      }
+    }
+    return false;
   };
   const patchElement = (n1, n2) => {
     let el = n2.el = n1.el;
