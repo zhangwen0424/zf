@@ -1,7 +1,7 @@
 const { build } = require("esbuild");
 const { resolve } = require("path");
 
-const target = "runtime-dom"; // reactivity
+const target = "compiler-core"; // reactivity、runtime-dom
 
 build({
   // 打包的入口
