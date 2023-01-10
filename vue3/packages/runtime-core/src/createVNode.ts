@@ -9,8 +9,42 @@ export function isSameVnode(n1, n2) {
   return n1.type === n2.type && n1.key === n2.key;
 }
 
-// type：节点类型，props:属性，children:儿子，只能是文本、数组、null
-export function createVNode(type, props, children = null) {
+// 编译优化，靶向更新
+// 模版编译后 ， vue内部做了优化，直接用我们之前的h方法是不具备优化的
+// 如果拟采用的是jsx来编写vue代码是没有优化的，只有通过.vue 文件编写template 才能享受到这种优化。
+
+export { createVNode as createElementVNode }; // 用于模版编译优化：靶向更新
+
+export let currentBlock = null;
+
+export function openBlock() {
+  currentBlock = []; // 用来收集我们的动态节点
+}
+
+export function createElementBlock(type, props?, children?, patchFlag?) {
+  // 需要根据用户提供的参数创建虚拟节点，并且在这个虚拟节点上增加一个dynamicChildren来收集
+  const vnode = createVNode(type, props, children, patchFlag);
+  vnode.dynamicChildren = currentBlock;
+  currentBlock = null;
+  return vnode;
+}
+
+// 转换成字符串
+export function toDisplayString(val) {
+  if (isObject(val)) {
+    return JSON.stringify(val);
+  }
+  if (isString(val)) {
+    return val;
+  }
+  if (val == null) {
+    return "";
+  }
+  return String(val);
+}
+
+// type：节点类型，props:属性，children:儿子，只能是文本、数组、null， patchFlag = 0意味着没有编译优化
+export function createVNode(type, props, children = null, patchFlag = 0) {
   // 虚拟节点需要有一些重要的属性
   const shapeFlag = isString(type)
     ? ShapeFlags.ELEMENT
@@ -26,6 +60,8 @@ export function createVNode(type, props, children = null) {
     key: props?.key, // 虚拟节点的key，主要用于diff算法
     el: null, // 虚拟节点对应的真实节点
     shapeFlag, //元素的形状，使用靠位运算，描述自己的类型和自己儿子的类型
+    patchFlag, // 标记靶向节点
+    dynamicChildren: null, //存储动态节点，用于编译优化：靶向更新
   };
   if (children) {
     let type = 0;
@@ -41,6 +77,11 @@ export function createVNode(type, props, children = null) {
     }
     // |=  相当于把类型关联起来，类似于 +=
     vnode.shapeFlag |= type;
+
+    // 当前block 应该收集子节点
+    if (currentBlock && patchFlag > 0) {
+      currentBlock.push(vnode);
+    }
   }
   // 这里返回了虚拟节点，并且标识了虚拟节点的类型
   return vnode;

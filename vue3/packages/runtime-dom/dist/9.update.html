@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      import {
+        reactive,
+        render,
+        toRefs,
+        h,
+        createElementVNode as _createElementVNode,
+        toDisplayString as _toDisplayString,
+        openBlock as _openBlock,
+        createElementBlock as _createElementBlock,
+      } from "./runtime-dom.js";
+      // import {
+      //   reactive,
+      //   render,
+      //   toRefs,
+      //   h,
+      //   createElementVNode as _createElementVNode,
+      //   toDisplayString as _toDisplayString,
+      //   openBlock as _openBlock,
+      //   createElementBlock as _createElementBlock,
+      // } from "../../../node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js";
+
+      // 靶向更新：把动态的都拍平放到动态列表dynamicChildren，只需要比较动态列表（一对一关系），不需要深度遍历
+      // block 节点会忽略层级 把当前根节点下面的所有 动态节点全部收集起来，作为动态节点列表
+      // 以前的列表循环出来的是5个  更新后 循环出来的是10个，这种不可以靶向更新，只有一对一才可以做靶向更新
+      const VueComponent = {
+        setup() {
+          const state = reactive({ name: "zw", age: 31 });
+          setTimeout(() => {
+            state.name = "xxx";
+          }, 1000);
+          return { ...toRefs(state) };
+        },
+        render(_ctx, _cache, $props, $setup, $data, $options) {
+          /* <div>
+            <h1>Hello Jiang</h1>
+            <span>{{name}}</span>
+            <p><span{{age}}</span>></p>
+          </div> */
+          // debugger;
+          let dynmaic =
+            (_openBlock(),
+            _createElementBlock("div", null, [
+              _createElementVNode("h1", null, "Hello Jiang"),
+              _createElementVNode(
+                "span",
+                null,
+                _toDisplayString(_ctx.name),
+                1 /* TEXT */
+              ),
+              _createElementVNode("p", null, [
+                _createElementVNode(
+                  "span",
+                  null,
+                  _toDisplayString(_ctx.age),
+                  1 /* TEXT */
+                ),
+              ]),
+            ]));
+
+          console.log("dynmaic", dynmaic);
+
+          return dynmaic;
+        },
+      };
+
+      render(h(VueComponent), app);
+    </script>
+  </body>
+</html>

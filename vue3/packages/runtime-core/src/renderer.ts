@@ -1,5 +1,6 @@
 import { activeEffect, reactive, ReactiveEffect } from "@vue/reactivity";
 import { invokeArrayFn, ShapeFlags } from "@vue/shared";
+import { PatchFlags } from "packages/shared/src/patchFlags";
 import { createComponentInstance, setupComponent } from "./component";
 import { Text, Fragment, isSameVnode } from "./createVNode";
 import { queueJob } from "./scheduler";
@@ -267,9 +268,29 @@ export function createRenderer(renderOptions) {
     const oldProps = n1.props || {};
     const newProps = n2.props || {};
 
-    // 比较前后属性的差异 diff prop
-    patchProps(oldProps, newProps, el);
-    patchChildren(n1, n2, el);
+    let { patchFlag } = n2;
+
+    // 比较前后属性的差异 diff prop  靶向更新
+    if (patchFlag) {
+      if (patchFlag & PatchFlags.TEXT) {
+        // 只比较文本
+        if (n1.children !== n2.children) {
+          hostSetElementText(el, n2.children);
+        }
+      }
+    }
+    // style 比较
+    // class 比较  用更新后的差异 应用到老节点上
+    else {
+      patchProps(oldProps, newProps, el);
+    }
+
+    // 靶向更新子节点
+    if (n2.dynamicChildren) {
+      patchBlockChildren(n1, n2);
+    } else {
+      patchChildren(n1, n2, el);
+    }
   };
 
   // 比较属性差异
@@ -522,6 +543,13 @@ export function createRenderer(renderOptions) {
           hostInsert(curNode.el, el, anchor); // 不在序列中意味着此元素需要移动
         }
       }
+    }
+  };
+
+  const patchBlockChildren = (n1, n2) => {
+    for (let i = 0; i < n2.dynamicChildren.length; i++) {
+      // 让两个动态节点比较，靶向更新
+      patchElement(n1.dynamicChildren[i], n2.dynamicChildren[i]);
     }
   };
 

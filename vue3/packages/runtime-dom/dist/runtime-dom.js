@@ -536,7 +536,29 @@ function isVNode(value) {
 function isSameVnode(n1, n2) {
   return n1.type === n2.type && n1.key === n2.key;
 }
-function createVNode(type, props, children = null) {
+var currentBlock = null;
+function openBlock() {
+  currentBlock = [];
+}
+function createElementBlock(type, props, children, patchFlag) {
+  const vnode = createVNode(type, props, children, patchFlag);
+  vnode.dynamicChildren = currentBlock;
+  currentBlock = null;
+  return vnode;
+}
+function toDisplayString(val) {
+  if (isObject(val)) {
+    return JSON.stringify(val);
+  }
+  if (isString(val)) {
+    return val;
+  }
+  if (val == null) {
+    return "";
+  }
+  return String(val);
+}
+function createVNode(type, props, children = null, patchFlag = 0) {
   const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : 0;
   const vnode = {
     __v_isVNode: true,
@@ -545,7 +567,9 @@ function createVNode(type, props, children = null) {
     children,
     key: props == null ? void 0 : props.key,
     el: null,
-    shapeFlag
+    shapeFlag,
+    patchFlag,
+    dynamicChildren: null
   };
   if (children) {
     let type2 = 0;
@@ -558,6 +582,9 @@ function createVNode(type, props, children = null) {
       type2 = 8 /* TEXT_CHILDREN */;
     }
     vnode.shapeFlag |= type2;
+    if (currentBlock && patchFlag > 0) {
+      currentBlock.push(vnode);
+    }
   }
   return vnode;
 }
@@ -788,8 +815,21 @@ function createRenderer(renderOptions2) {
     let el = n2.el = n1.el;
     const oldProps = n1.props || {};
     const newProps = n2.props || {};
-    patchProps(oldProps, newProps, el);
-    patchChildren(n1, n2, el);
+    let { patchFlag } = n2;
+    if (patchFlag) {
+      if (patchFlag & 1 /* TEXT */) {
+        if (n1.children !== n2.children) {
+          hostSetElementText(el, n2.children);
+        }
+      }
+    } else {
+      patchProps(oldProps, newProps, el);
+    }
+    if (n2.dynamicChildren) {
+      patchBlockChildren(n1, n2);
+    } else {
+      patchChildren(n1, n2, el);
+    }
   };
   const patchProps = (oldProps, newProps, el) => {
     if (oldProps == newProps)
@@ -910,6 +950,11 @@ function createRenderer(renderOptions2) {
       }
     }
   };
+  const patchBlockChildren = (n1, n2) => {
+    for (let i = 0; i < n2.dynamicChildren.length; i++) {
+      patchElement(n1.dynamicChildren[i], n2.dynamicChildren[i]);
+    }
+  };
   const mountElement = (vnode, container, anchor = null) => {
     const { type, props, children, shapeFlag } = vnode;
     const el = vnode.el = hostCreateElement(type);
@@ -1026,8 +1071,11 @@ export {
   activeEffect,
   computed,
   createComponentInstance,
+  createElementBlock,
+  createVNode as createElementVNode,
   createRenderer2 as createRenderer,
   createVNode,
+  currentBlock,
   curretInstance,
   dowatch,
   effect,
@@ -1043,12 +1091,14 @@ export {
   onMounted,
   onUnmounted,
   onUpdated,
+  openBlock,
   proxyRefs,
   reactive,
   ref,
   render,
   setCurrentInstance,
   setupComponent,
+  toDisplayString,
   toReactive,
   toRef,
   toRefs,
