@@ -74,7 +74,7 @@ export const track = function (target, key) {
 // 方法拆分
 export function trackEffects(dep) {
   let shouldTrack = !dep.has(activeEffect);
-  if (shouldTrack) {
+  if (shouldTrack && activeEffect) {
     // name = new Set(effect)
     // age = new Set(effect)
     dep.add(activeEffect);

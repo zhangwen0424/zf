@@ -1,5 +1,5 @@
 import { activeEffect, reactive, ReactiveEffect } from "@vue/reactivity";
-import { ShapeFlags } from "@vue/shared";
+import { invokeArrayFn, ShapeFlags } from "@vue/shared";
 import { createComponentInstance, setupComponent } from "./component";
 import { Text, Fragment, isSameVnode } from "./createVNode";
 import { queueJob } from "./scheduler";
@@ -28,7 +28,7 @@ export function createRenderer(renderOptions) {
   // patch
   const render = (vnode, container) => {
     // 虚拟节点的创建 最终生成真实dom渲染到容器中
-    console.log("render:", vnode, container);
+    // console.log("render:", vnode, container);
     // debugger;
     if (vnode == null) {
       // 卸载逻辑
@@ -139,26 +139,38 @@ export function createRenderer(renderOptions) {
       // 组件有自己的虚拟节点，返回的虚拟节点 subTree
 
       if (!instance.isMounted) {
+        let { bm, m } = instance; // bm:beforeMount, m:mounted
+
+        invokeArrayFn(bm); // beforeMount
+
         // 组件没有初始化，进行初始化
         const subTree = instance.render.call(instance.proxy, instance.proxy); //将 proxy设置为状态
         patch(null, subTree, el, anchor);
         instance.isMounted = true;
         instance.subTree = subTree; //记录第一次的 subTree
+
+        invokeArrayFn(m); // mounted
       } else {
         // 更新
         const prevSubTree = instance.subTree;
         // 这里再下次渲染前需要更新属性，更新属性后再渲染，获取最新的虚拟ODM ， n2.props 来更instance.的props
-        const next = instance.next;
+        const { next, bu, u } = instance; // bu:beforeUpdate, u:updated
+
         if (next) {
           // 说明属性有更新
           updatePreRender(instance, next); // 因为更新前会清理依赖，所以这里更改属性不会触发渲染
         }
+
+        invokeArrayFn(bu); // beforeUpdate
+
         const nextSubTree = instance.render.call(
           instance.proxy,
           instance.proxy
         );
         instance.subTree = nextSubTree; // 更新子树的虚拟节点
         patch(prevSubTree, nextSubTree, el, anchor);
+
+        invokeArrayFn(u); // updated
       }
     };
 
@@ -179,6 +191,11 @@ export function createRenderer(renderOptions) {
     instance.next = null; // 清理暂存的节点
     instance.vnode = next; // 更新虚拟节点
     updateProps(instance, next.props);
+
+    // 更新插槽
+    // 如果是对象不能采用替换的方式，如果用户使用而能解构出来用，导致更新了插槽但是用户用的还是老的slots
+    // 源码中还是要双方比较，更新slots
+    Object.assign(instance.slots, next.children); // 新的儿子
   };
 
   // 更新新的属性
@@ -207,6 +224,7 @@ export function createRenderer(renderOptions) {
 
     // 这里我们可以比较熟悉，如果属性发生变化了，我们调用instance.update 来处理更新逻辑，统一更新的入口
 
+    // 判定是否需要更新：1.属性变化 2.插槽变化
     if (shouldComponentUpdate(n1, n2)) {
       instance.next = n2; // 暂存新的虚拟节点
       instance.update();
@@ -217,6 +235,12 @@ export function createRenderer(renderOptions) {
   function shouldComponentUpdate(n1, n2) {
     const oldProps = n1.props;
     const newProps = n2.props;
+
+    // 如果组件有插槽也需要更新
+    if (n1.childre !== n2.children) return true; // 遇到插槽 前后不一致就要重新渲染
+
+    if (oldProps == newProps) return false; // 属性一样就不需要更新
+
     return hasChanged(oldProps, newProps);
   }
 
@@ -358,7 +382,7 @@ export function createRenderer(renderOptions) {
     //  a b c
     //  a b d
     //  i, e1, e2    2 2 2
-    console.log("从头开始比:", i, e1, e2); // 2 2 2
+    // console.log("从头开始比:", i, e1, e2); // 2 2 2
 
     // 从后开始比较 sync from end
     while (i <= e1 && i <= e2) {
@@ -372,7 +396,7 @@ export function createRenderer(renderOptions) {
       e1--;
       e2--;
     }
-    console.log("从后开始比:", i, e1, e2);
+    // console.log("从后开始比:", i, e1, e2);
     //     a b c  =》 2 - 3
     // d e a b c  =》 4 - 3
     // i=0, e1=-1, e2=1
@@ -419,7 +443,7 @@ export function createRenderer(renderOptions) {
     let s1 = i;
     let s2 = i;
 
-    console.log("s1, s2, e1, e2: ", s1, s2, e1, e2); // 2 2 4 5
+    // console.log("s1, s2, e1, e2: ", s1, s2, e1, e2); // 2 2 4 5
 
     const keyToNewIndexMap = new Map();
 
@@ -464,7 +488,7 @@ export function createRenderer(renderOptions) {
     // 求最长递增子序列对应的索引
     const increasingNewIndexSequence = getSeq(newIndexToOldIndex); // [1, 2]
     // const increasingNewIndexSequence = getSeq([3, 5, 7, 4, 2, 8, 9, 11, 6, 10]); // [1, 2]
-    console.log("increasingNewIndexSequence:", increasingNewIndexSequence);
+    // console.log("increasingNewIndexSequence:", increasingNewIndexSequence);
     let j = increasingNewIndexSequence.length - 1; // 取出数组的最后一个索引
     // 考虑移动问题、和新的有老的没有问题
     // 采用倒叙插入的方式 进行移动节点。 0 就是新增的
@@ -530,16 +554,31 @@ export function createRenderer(renderOptions) {
     });
   };
 
-  // 卸载节点
+  // 卸载节点、组件
   const unmount = (vnode) => {
     const { shapeFlag, type, children } = vnode;
     if (type == Fragment) {
       return unmountChildren(children);
     }
+
+    // 组件卸载逻辑
+    if (shapeFlag & ShapeFlags.COMPONENT) {
+      let { subTree, bum, um } = vnode.component; // 组件实例 bum:beforeUnmounted, um:Unmounted
+
+      bum && invokeArrayFn(bum);
+
+      unmount(subTree); // 卸载返回值的对应的dom，返回值可能是一个fragment
+
+      um && invokeArrayFn(um);
+      return;
+    }
+
+    // 元素、文本卸载
     // if (shapeFlag & ShapeFlags.ELEMENT) {
     hostRemove(vnode.el); // 对于元素来说 直接删除dom即可
     // }
   };
+
   // 批量卸载儿子
   const unmountChildren = (children) => {
     children.forEach((child) => {

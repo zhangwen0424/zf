@@ -10,4 +10,8 @@ export const isString = function (value) {
   return typeof value === "string";
 };
 
+export const invokeArrayFn = function (fns) {
+  fns && fns.forEach((fn) => fn());
+};
+
 export * from "./shapeFlag";

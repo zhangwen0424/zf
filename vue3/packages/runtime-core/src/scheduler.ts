@@ -7,7 +7,7 @@ export function queueJob(job) {
   if (!queue.includes(job)) {
     queue.push(job);
   }
-  console.log(queue);
+  // console.log(queue);
   // 数据变化更 可能会出现多个组件的更新，所有需要采用队列来存储
 
   // 没有刷新处理

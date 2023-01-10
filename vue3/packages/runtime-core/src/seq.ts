@@ -62,7 +62,7 @@ export function getSeq(arr) {
       result[start] = i; // 找到比当前值大的，直接用当前的索引换掉
     }
   }
-  console.log("p:", p, result);
+  // console.log("p:", p, result);
   // 实现倒序追踪
   let i = result.length; // 总长度
   let last = result[i - 1]; // 获取最后一项

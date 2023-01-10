@@ -10,25 +10,39 @@
   <body>
     <div id="app"></div>
     <script type="module">
-      import {
-        Text,
-        Fragment,
-        render,
-        h,
-        ref,
-        toRefs,
-        reactive,
-      } from "../../../node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js";
       // import {
-      //   reactive,
-      //   toRefs,
-      //   ref,
+      //   getCurrentInstance,
+      //   onBeforeMount,
+      //   onMounted,
+      //   onBeforeUpdate,
+      //   onUpdated,
+      //   onBeforeUnmount,
+      //   onUnmounted,
       //   Text,
       //   Fragment,
-      //   createVNode,
-      //   h,
       //   render,
-      // } from "./runtime-dom.js";
+      //   h,
+      //   ref,
+      //   toRefs,
+      //   reactive,
+      // } from "../../../node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js";
+      import {
+        getCurrentInstance,
+        onBeforeMount,
+        onMounted,
+        onBeforeUpdate,
+        onUpdated,
+        onBeforeUnmount,
+        onUnmounted,
+        reactive,
+        toRefs,
+        ref,
+        Text,
+        Fragment,
+        createVNode,
+        h,
+        render,
+      } from "./runtime-dom.js";
 
       // 普通插槽 我们渲染的时候 数据都是来自于父组件的
       // 使用组件的时候 传递参数了 就是作用域插槽，会接受组件中的数据
@@ -43,12 +57,45 @@
       // 1. proxy.$slots(对 vue2 的兼容，在 render 函数中取到插槽)
       // 2. setup(props, {slots})
 
+      // 生命周期，用户注册的一些钩子方法，当组件在创建、销毁、更新的时候会调用这些方法  mixin
+      function useMyHook() {
+        onMounted(() => {
+          const instance = getCurrentInstance();
+          console.log("instance:", instance); // null， setup之后就移除了
+        });
+      }
+
       const VueComponent = {
         setup(props, { slots }) {
           //let {slots} =  context    更新 context.slots = {}
           const text = ref("hello");
-          console.log("slots", slots, slots.default(text.value));
-          
+          // console.log("slots", slots, slots.default(text.value));
+
+          // instance 和 生命周期钩子关联在一起？
+
+          // 生命周期函数只能用在 setup 中，且都是同步的，不能放到定时器中使用
+
+          const instance = getCurrentInstance();
+          onBeforeMount(() => {
+            console.log("beforemount");
+          });
+          useMyHook();
+          onMounted(() => {
+            console.log("mounted");
+          });
+          onBeforeUpdate(() => {
+            console.log("beforeupdate");
+          });
+          onUpdated(() => {
+            console.log("updated");
+          });
+          onBeforeUnmount(() => {
+            console.log("beforeunmount");
+          });
+          onUnmounted(() => {
+            console.log("unmounted");
+          });
+
           //  1.通过 setup中 context 取插槽
           // return () => {
           //   return h(Fragment, [
@@ -62,17 +109,18 @@
           return (proxy) => {
             return h(Fragment, [
               proxy.$slots.header(),
-              proxy.slots.default(text.value),
-              proxy.slots.footer(),
+              proxy.$slots.default(text.value),
+              proxy.$slots.footer(),
             ]);
           };
         },
       };
+
       // vue3 为了方便区分是插槽还是基本的虚拟节点，作区分 直接写成对象
       render(
         h(
           VueComponent,
-          {},
+          { name: 22 },
           {
             // 组件的儿子就是插槽，而且插槽一定是一个对象
             default: (text) => h(Text, "default " + text),
@@ -82,6 +130,28 @@
         ),
         app
       );
+
+      // 插槽的更新
+      setTimeout(() => {
+        render(
+          h(
+            VueComponent,
+            { name: 22 },
+            {
+              // 组件的儿子就是插槽，而且插槽一定是一个对象
+              default: (text) => h(Text, "default " + text),
+              header: () => h(Text, "header1"),
+              footer: () => h(Text, "footer2"),
+            }
+          ),
+          app
+        );
+      }, 2000);
+
+      // 组件卸载
+      setTimeout(() => {
+        render(null, app);
+      }, 3000);
     </script>
   </body>
 </html>

@@ -1,5 +1,16 @@
 import { proxyRefs, reactive } from "@vue/reactivity";
 import { isFunction, ShapeFlags } from "@vue/shared";
+export let curretInstance = null;
+
+// 设置组件实例
+export function setCurrentInstance(instance) {
+  curretInstance = instance;
+}
+
+// 获取组件实例
+export function getCurrentInstance() {
+  return curretInstance;
+}
 
 // 创建实例
 export function createComponentInstance(n2) {
@@ -85,7 +96,7 @@ export function setupComponent(instance) {
     const context = {
       attrs: instance.attrs,
       emit(eventName, ...args) {
-        console.log("instance.attrs", instance.attrs);
+        // console.log("instance.attrs", instance.attrs);
         // attrs 上面的事件名字 onMyOutEvent,  emit("myOutputEvent", "哈哈")
         let bindName = `on${eventName[0].toUpperCase()}${eventName.slice(1)}`;
         const handler = instance.attrs[bindName];
@@ -108,7 +119,10 @@ export function setupComponent(instance) {
       // compile()
       // 组件、树、表格、滚动组件
     };
+    setCurrentInstance(instance); // 设置组件实例
     const setupResult = setup(instance.props, context); // setup只会在组件初始化的时候走一次 顶替了vue2  created beforeCreate
+    setCurrentInstance(null); // 重置组件实例
+
     if (isFunction(setupResult)) {
       // setup中返回 render函数
       instance.render = setupResult;
@@ -136,7 +150,6 @@ const publicProperties = {
 
 // 初始化插槽
 const initSlots = (instance, children) => {
-  debugger;
   if (instance.vnode.shapeFlag & ShapeFlags.SLOTS_CHILDREN) {
     instance.slots = children;
   }

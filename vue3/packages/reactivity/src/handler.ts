@@ -5,7 +5,7 @@ import { isRef } from "./ref";
 
 export const mutableHandle = {
   get(target, key, receiver) {
-    console.log("handler.js getter", key); // 取值的时候
+    // console.log("handler.js getter", key); // 取值的时候
     // debugger;
 
     if (key == ReactiveFlags.IS_REACTIVE) {
@@ -30,7 +30,7 @@ export const mutableHandle = {
     return res;
   },
   set(target, key, newValue, receiver) {
-    console.log("handler.js setter", key); // 更新值
+    // console.log("handler.js setter", key); // 更新值
     // debugger;
     let oldValue = target[key];
 

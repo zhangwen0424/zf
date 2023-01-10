@@ -110,6 +110,9 @@ var isFunction = function(value) {
 var isString = function(value) {
   return typeof value === "string";
 };
+var invokeArrayFn = function(fns) {
+  fns && fns.forEach((fn) => fn());
+};
 
 // packages/reactivity/src/effect.ts
 var effect = function(fn, options = {}) {
@@ -165,7 +168,7 @@ var track = function(target, key) {
 };
 function trackEffects(dep) {
   let shouldTrack = !dep.has(activeEffect);
-  if (shouldTrack) {
+  if (shouldTrack && activeEffect) {
     dep.add(activeEffect);
     activeEffect.deps.push(dep);
   }
@@ -272,7 +275,6 @@ function proxyRefs(object) {
 // packages/reactivity/src/handler.ts
 var mutableHandle = {
   get(target, key, receiver) {
-    console.log("handler.js getter", key);
     if (key == "__v_isReactive" /* IS_REACTIVE */) {
       return true;
     }
@@ -287,7 +289,6 @@ var mutableHandle = {
     return res;
   },
   set(target, key, newValue, receiver) {
-    console.log("handler.js setter", key);
     let oldValue = target[key];
     const r = Reflect.set(target, key, newValue, receiver);
     if (oldValue !== newValue) {
@@ -405,6 +406,13 @@ var computedRefImple = class {
 };
 
 // packages/runtime-core/src/component.ts
+var curretInstance = null;
+function setCurrentInstance(instance) {
+  curretInstance = instance;
+}
+function getCurrentInstance() {
+  return curretInstance;
+}
 function createComponentInstance(n2) {
   const instance = {
     state: {},
@@ -464,7 +472,6 @@ function setupComponent(instance) {
     const context = {
       attrs: instance.attrs,
       emit(eventName, ...args) {
-        console.log("instance.attrs", instance.attrs);
         let bindName = `on${eventName[0].toUpperCase()}${eventName.slice(1)}`;
         const handler = instance.attrs[bindName];
         if (handler) {
@@ -477,7 +484,9 @@ function setupComponent(instance) {
       },
       slots: instance.slots
     };
+    setCurrentInstance(instance);
     const setupResult = setup(instance.props, context);
+    setCurrentInstance(null);
     if (isFunction(setupResult)) {
       instance.render = setupResult;
     } else {
@@ -496,7 +505,6 @@ var publicProperties = {
   $slots: (i) => i.slots
 };
 var initSlots = (instance, children) => {
-  debugger;
   if (instance.vnode.shapeFlag & 32 /* SLOTS_CHILDREN */) {
     instance.slots = children;
   }
@@ -562,7 +570,6 @@ function queueJob(job) {
   if (!queue.includes(job)) {
     queue.push(job);
   }
-  console.log(queue);
   if (!isFlushing) {
     isFlushing = true;
     p.then(() => {
@@ -606,7 +613,6 @@ function getSeq(arr) {
       result[start] = i2;
     }
   }
-  console.log("p:", p2, result);
   let i = result.length;
   let last = result[i - 1];
   while (i-- > 0) {
@@ -632,7 +638,6 @@ function createRenderer(renderOptions2) {
     patchProp: hostPatchProp
   } = renderOptions2;
   const render2 = (vnode, container) => {
-    console.log("render:", vnode, container);
     if (vnode == null) {
       if (container._vnode) {
         unmount(container._vnode);
@@ -703,22 +708,27 @@ function createRenderer(renderOptions2) {
   function setupRendererEffect(instance, el, anchor) {
     const componentUpdateFn = () => {
       if (!instance.isMounted) {
+        let { bm, m } = instance;
+        invokeArrayFn(bm);
         const subTree = instance.render.call(instance.proxy, instance.proxy);
         patch(null, subTree, el, anchor);
         instance.isMounted = true;
         instance.subTree = subTree;
+        invokeArrayFn(m);
       } else {
         const prevSubTree = instance.subTree;
-        const next = instance.next;
+        const { next, bu, u } = instance;
         if (next) {
           updatePreRender(instance, next);
         }
+        invokeArrayFn(bu);
         const nextSubTree = instance.render.call(
           instance.proxy,
           instance.proxy
         );
         instance.subTree = nextSubTree;
         patch(prevSubTree, nextSubTree, el, anchor);
+        invokeArrayFn(u);
       }
     };
     const effect2 = new ReactiveEffect(componentUpdateFn, () => {
@@ -731,6 +741,7 @@ function createRenderer(renderOptions2) {
     instance.next = null;
     instance.vnode = next;
     updateProps(instance, next.props);
+    Object.assign(instance.slots, next.children);
   };
   function updateProps(instance, nextProps) {
     let prevProps = instance.props;
@@ -753,6 +764,10 @@ function createRenderer(renderOptions2) {
   function shouldComponentUpdate(n1, n2) {
     const oldProps = n1.props;
     const newProps = n2.props;
+    if (n1.childre !== n2.children)
+      return true;
+    if (oldProps == newProps)
+      return false;
     return hasChanged(oldProps, newProps);
   }
   const hasChanged = (oldProps = {}, newProps = {}) => {
@@ -836,7 +851,6 @@ function createRenderer(renderOptions2) {
       }
       i++;
     }
-    console.log("\u4ECE\u5934\u5F00\u59CB\u6BD4:", i, e1, e2);
     while (i <= e1 && i <= e2) {
       const n1 = c1[e1];
       const n2 = c2[e2];
@@ -848,7 +862,6 @@ function createRenderer(renderOptions2) {
       e1--;
       e2--;
     }
-    console.log("\u4ECE\u540E\u5F00\u59CB\u6BD4:", i, e1, e2);
     if (i > e1) {
       while (i <= e2) {
         const nextPos = e2 + 1;
@@ -864,7 +877,6 @@ function createRenderer(renderOptions2) {
     }
     let s1 = i;
     let s2 = i;
-    console.log("s1, s2, e1, e2: ", s1, s2, e1, e2);
     const keyToNewIndexMap = /* @__PURE__ */ new Map();
     const toBePatched = e2 - s2 + 1;
     const newIndexToOldIndex = new Array(toBePatched).fill(0);
@@ -882,7 +894,6 @@ function createRenderer(renderOptions2) {
       }
     }
     const increasingNewIndexSequence = getSeq(newIndexToOldIndex);
-    console.log("increasingNewIndexSequence:", increasingNewIndexSequence);
     let j = increasingNewIndexSequence.length - 1;
     for (let i2 = toBePatched - 1; i2 >= 0; i2--) {
       const curIndex = s2 + i2;
@@ -926,6 +937,13 @@ function createRenderer(renderOptions2) {
     if (type == Fragment) {
       return unmountChildren(children);
     }
+    if (shapeFlag & 6 /* COMPONENT */) {
+      let { subTree, bum, um } = vnode.component;
+      bum && invokeArrayFn(bum);
+      unmount(subTree);
+      um && invokeArrayFn(um);
+      return;
+    }
     hostRemove(vnode.el);
   };
   const unmountChildren = (children) => {
@@ -961,6 +979,35 @@ function h(type, propsOrChildren, children) {
   }
 }
 
+// packages/runtime-core/src/apiLifecycle.ts
+var LicycleHooks = /* @__PURE__ */ ((LicycleHooks2) => {
+  LicycleHooks2["BEFORE_MOUNT"] = "bm";
+  LicycleHooks2["MOUNTED"] = "m";
+  LicycleHooks2["BFORE_UPDATE"] = "bu";
+  LicycleHooks2["UPDATED"] = "u";
+  LicycleHooks2["BEFORE_UNMOUNT"] = "bum";
+  LicycleHooks2["UNMOUNTED"] = "um";
+  return LicycleHooks2;
+})(LicycleHooks || {});
+function createHook(type) {
+  return (hook, i = curretInstance) => {
+    if (curretInstance) {
+      const hooks = curretInstance[type] || (curretInstance[type] = []);
+      hooks.push(() => {
+        setCurrentInstance(i);
+        hook();
+        setCurrentInstance(null);
+      });
+    }
+  };
+}
+var onBeforeMount = createHook("bm" /* BEFORE_MOUNT */);
+var onMounted = createHook("m" /* MOUNTED */);
+var onBeforeUpdate = createHook("bu" /* BFORE_UPDATE */);
+var onUpdated = createHook("u" /* UPDATED */);
+var onBeforeUnmount = createHook("bum" /* BEFORE_UNMOUNT */);
+var onUnmounted = createHook("um" /* UNMOUNTED */);
+
 // packages/runtime-dom/src/index.ts
 var renderOptions = Object.assign(nodeOps, { patchProp });
 function createRenderer2(renderOptions2) {
@@ -972,24 +1019,36 @@ function render(vnode, container) {
 }
 export {
   Fragment,
+  LicycleHooks,
   ReactiveEffect,
   ReactiveFlags,
   Text,
   activeEffect,
   computed,
+  createComponentInstance,
   createRenderer2 as createRenderer,
   createVNode,
+  curretInstance,
   dowatch,
   effect,
+  getCurrentInstance,
   h,
   isReactive,
   isRef,
   isSameVnode,
   isVNode,
+  onBeforeMount,
+  onBeforeUnmount,
+  onBeforeUpdate,
+  onMounted,
+  onUnmounted,
+  onUpdated,
   proxyRefs,
   reactive,
   ref,
   render,
+  setCurrentInstance,
+  setupComponent,
   toReactive,
   toRef,
   toRefs,
