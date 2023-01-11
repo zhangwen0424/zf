@@ -11,9 +11,38 @@ function createParserContext(template) {
   };
 }
 
+// 处理换行游标
+function advancePositionWithMutation(context, source, endIndex) {
+  let linesCount = 0; // 计算经过多少行  \n
+  let linePos = -1; // 遇到换行标记换行的开始位置
+  // 根据结束索引遍历内容，看一下经历了多少个\n字符
+  for (let i = 0; i < endIndex; i++) {
+    if (source[i].charCodeAt(0) === 10) {
+      // 就是换行
+      linesCount++;
+      linePos = i;
+    }
+  }
+  // console.log(linesCount, linePos);
+  context.line += linesCount;
+  context.offset += endIndex;
+  context.column =
+    linePos == -1 ? context.column + endIndex : endIndex - linePos;
+}
+
+// 获取当前游标
+function getCursor(context) {
+  let { line, column, offset } = context;
+  return { line, column, offset };
+}
+
 // 循环遍历模板的终止条件，如果为空说明遍历完毕
 function isEnd(context) {
   const source = context.source;
+
+  // 如果遇到 </div>
+  if (context.source.startsWith("</")) return true;
+
   return !source; // 最终截取到空字符串，停止截取
 }
 
@@ -27,31 +56,6 @@ function getSelection(context, start, end?) {
   };
 }
 
-// 获取当前游标
-function getCursor(context) {
-  let { line, column, offset } = context;
-  return { line, column, offset };
-}
-
-// 处理换行游标
-function advancePositionWithMutation(context, source, endIndex) {
-  let linesCount = 0; // 计算经过多少行  \n
-  let linePos = -1; // 遇到换行标记换行的开始位置
-  // 根据结束索引遍历内容，看一下经历了多少个\n字符
-  for (let i = 0; i < endIndex; i++) {
-    if (source[i].charCodeAt(0) === 10) {
-      // 就是换行
-      linesCount++;
-      linePos = i;
-    }
-  }
-  console.log(linesCount, linePos);
-  context.line += linesCount;
-  context.offset += endIndex;
-  context.column =
-    linePos == -1 ? context.column + endIndex : endIndex - linePos;
-}
-
 // 前进一步，删除已经解析的内容，前进是删除解析
 function advanceBy(context, endIndex) {
   let source = context.source;
@@ -61,8 +65,11 @@ function advanceBy(context, endIndex) {
 }
 
 // 前进，删除空格
-function advanceBySpaces(context) {
-  return "";
+function advnaceBySpaces(context) {
+  const match = /^[ \t\r\n]+/.exec(context.source);
+  if (match) {
+    advanceBy(context, match[0].length); // 删除所有空格
+  }
 }
 
 // 截取文本内容
@@ -73,7 +80,7 @@ function parseTextData(context, endIndex) {
   return content;
 }
 
-// 处理文本
+// 处理文本,start 肯定是文本，找到最近结束的位置（遇到<或{{),截取开始到结束的为当前文本
 function parseText(context) {
   // 如何计算文本的结束位置
   // 假设法求末尾的索引，得到距离自己最近的 < 或者 {{ 就结束嘞
@@ -81,6 +88,7 @@ function parseText(context) {
   let endIndex = context.source.length; // 默认末尾是是最后一位
   let start = getCursor(context);
 
+  // 1<{}
   for (let i = 0; i < endTokens.length; i++) {
     // 因为开头肯定是文本，所以第一个字符肯定不是 < {{, 从下一个开始查找
     const index = context.source.indexOf(endTokens[i], 1);
@@ -121,7 +129,7 @@ function parserInterpolation(context) {
     content: {
       type: NodeTypes.SIMPLE_EXPRESSION,
       isStatic: false,
-      content, // 内容 **
+      content: preTrimContent, // 内容 **
       loc: getSelection(context, innerStart, innerEnd), // 有点小bug
     },
     loc: getSelection(context, start),
@@ -130,20 +138,94 @@ function parserInterpolation(context) {
 
 // 处理元素
 function parserElement(context) {
-  // let node =
+  let node = parserTag(context); // 先处理开始标签
+  (node as any).children = parseChilren(context); // 需要在处理标签后，处理的子元素都是她的儿子
+  // <div><span></span><div>
+  if (context.source.startsWith("</")) {
+    // </div>
+    parserTag(context); // 删除标签的闭合标签，没有收集
+  }
+  node.loc = getSelection(context, node.loc.start); // 更新之前的信息
+  return node;
 }
 
 // 处理标签
 function parserTag(context) {
   const start = getCursor(context);
+
   // match 1) 匹配出来的是完整的字符串  <div></div>  match[0] = <div
   // 2) 第一个分组
   const match = /^<\/?([a-z][^ \t\r\n/>]*)/.exec(context.source);
   const tag = match[1]; //'div'
   advanceBy(context, match[0].length); // <div
-  advanceBySpaces(context);
+  advnaceBySpaces(context);
 
-  //
+  // 处理元素上的属性
+  let props = parseAttributes(context);
+  let isSelfClosing = context.source.startsWith(">"); // 我需要删除闭合标签
+  advanceBy(context, isSelfClosing ? 2 : 1);
+  return {
+    type: NodeTypes.ELEMENT,
+    isSelfClosing,
+    tag,
+    props,
+    loc: getSelection(context, start),
+  };
+}
+// 处理属性值 "a"  'b'
+function parseAttributeValue(context) {
+  // 如果有引号 删除引号，没有引号可以直接用
+  const quote = context.source[0];
+  const isQuoted = quote === "" || quote === ""; // a='1' a="a"
+  let content;
+  if (isQuoted) {
+    advanceBy(context, 1);
+    const endIndex = context.source.indexOf(quote); // 结尾的索引   '   '
+    const content = parseTextData(context, endIndex);
+    advanceBy(context, 1);
+    return content;
+  } else {
+  }
+}
+// 处理属性
+function parseAttribute(context) {
+  const start = getCursor(context);
+  const match = /^[^\t\r\n\f />][^\t\r\n\f />=]*/.exec(context.source);
+
+  const name = match[0]; // 获取属性名字
+  advanceBy(context, name.length); // 删除属性名
+
+  let value;
+
+  // 先匹配空格 和 = 删除掉 后面的就是数学
+  if (/^[\t\r\n\f ]*=/.test(context.source)) {
+    //   b
+    advnaceBySpaces(context);
+    advanceBy(context, 1);
+    advnaceBySpaces(context);
+    value = parseAttributeValue(context); //  vue 2直接搞一个匹配属性的正则就可以了
+  }
+
+  return {
+    type: NodeTypes.ATTRIBUTE,
+    name,
+    value: {
+      content: value,
+    },
+    loc: getSelection(context, start),
+  };
+}
+// 批量处理属性
+function parseAttributes(context) {
+  // 解析属性
+  const props = [];
+  while (!context.source.startsWith(">")) {
+    // 遇到> 就停止循环
+    const prop = parseAttribute(context);
+    props.push(prop);
+    advnaceBySpaces(context);
+  }
+  return props;
 }
 
 // 解析上下文
@@ -153,7 +235,8 @@ function parseChilren(context) {
     const s = context.source; // 获取当前的内容
     let node; // 当前处理的节点
     if (s[0] === "<") {
-      node = parserTag(context);
+      // 我可以对元素进行处理
+      node = parserElement(context);
     } else if (s.startsWith("{{")) {
       // 我们可以对表达式进行处理
       node = parserInterpolation(context);
@@ -163,7 +246,6 @@ function parseChilren(context) {
       node = parseText(context);
     }
     nodes.push(node);
-    break;
   }
   // context 是当前正在解析的内容，所以不用考虑startIndex
   return nodes;
