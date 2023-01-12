@@ -22,7 +22,9 @@
 
       // createElement("div", _toDisplayString(name) + 30);
 
-      console.log(compile(`{{ name}}  <div a="a"></div>`));
+      // 多个空格浏览器只能解析出一个来
+      // console.log(compile(`{{ name}}  <div a="a"><span>123</span></div>`));
+      console.log(compile(`<div a="1" b="2"><span>abc</span></div>`));
     </script>
   </body>
 </html>

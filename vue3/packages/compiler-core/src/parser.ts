@@ -73,7 +73,7 @@ function advnaceBySpaces(context) {
 }
 
 // 截取文本内容
-function parseTextData(context, endIndex) {
+function parserTextData(context, endIndex) {
   const content = context.source.slice(0, endIndex);
   // 截取后需要将context.source中的内容删除掉，删除已经解析的内容
   advanceBy(context, endIndex);
@@ -81,7 +81,7 @@ function parseTextData(context, endIndex) {
 }
 
 // 处理文本,start 肯定是文本，找到最近结束的位置（遇到<或{{),截取开始到结束的为当前文本
-function parseText(context) {
+function parserText(context) {
   // 如何计算文本的结束位置
   // 假设法求末尾的索引，得到距离自己最近的 < 或者 {{ 就结束嘞
   let endTokens = ["<", "{{"]; // 文本结束的语法
@@ -99,7 +99,7 @@ function parseText(context) {
     }
   }
   // context 是当前正在解析的内容，所以不用考虑startIndex
-  const content = parseTextData(context, endIndex); //截取文本内容
+  const content = parserTextData(context, endIndex); //截取文本内容
   return {
     type: NodeTypes.TEXT, // 类型：文本
     content, // 文本内容
@@ -118,7 +118,7 @@ function parserInterpolation(context) {
   const rawContentEndIndex = clonseIndex - 2; // 获取原始用户大括号中的内容长度
 
   // 获取去空格是之前的内容
-  const preTrimContent = parseTextData(context, rawContentEndIndex);
+  const preTrimContent = parserTextData(context, rawContentEndIndex);
   const innerEnd = getCursor(context);
   const content = preTrimContent.trim(); // 去掉内容的空格
 
@@ -139,6 +139,7 @@ function parserInterpolation(context) {
 // 处理元素
 function parserElement(context) {
   let node = parserTag(context); // 先处理开始标签
+  // debugger;
   (node as any).children = parseChilren(context); // 需要在处理标签后，处理的子元素都是她的儿子
   // <div><span></span><div>
   if (context.source.startsWith("</")) {
@@ -162,7 +163,7 @@ function parserTag(context) {
 
   // 处理元素上的属性
   let props = parseAttributes(context);
-  let isSelfClosing = context.source.startsWith(">"); // 我需要删除闭合标签
+  let isSelfClosing = context.source.startsWith("/>"); // 我需要删除闭合标签
   advanceBy(context, isSelfClosing ? 2 : 1);
   return {
     type: NodeTypes.ELEMENT,
@@ -176,12 +177,12 @@ function parserTag(context) {
 function parseAttributeValue(context) {
   // 如果有引号 删除引号，没有引号可以直接用
   const quote = context.source[0];
-  const isQuoted = quote === "" || quote === ""; // a='1' a="a"
+  const isQuoted = quote === "'" || quote === '"'; // a='1' a="a"
   let content;
   if (isQuoted) {
     advanceBy(context, 1);
     const endIndex = context.source.indexOf(quote); // 结尾的索引   '   '
-    const content = parseTextData(context, endIndex);
+    const content = parserTextData(context, endIndex);
     advanceBy(context, 1);
     return content;
   } else {
@@ -218,7 +219,7 @@ function parseAttribute(context) {
 // 批量处理属性
 function parseAttributes(context) {
   // 解析属性
-  const props = [];
+  const props = []; // <div   >
   while (!context.source.startsWith(">")) {
     // 遇到> 就停止循环
     const prop = parseAttribute(context);
@@ -243,12 +244,38 @@ function parseChilren(context) {
     }
     if (!node) {
       // 这个东西就是文本
-      node = parseText(context);
+      node = parserText(context);
     }
     nodes.push(node);
   }
+
+  // 处理后的节点 如果是文本 多个空格 应该合并成一个
+
+  // 如果解析后的结果是纯空格 ，则直接移除就可以了
+
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    if (node.type == NodeTypes.TEXT) {
+      if (!/[^\t\r\n\f ]/.test(node.content)) {
+        node[i] = null; // 如果是空节点 则直接变为null
+      } else {
+        node.content = node.content.replace(/[\t\r\n\f ]+/g, " ");
+      }
+    }
+  }
+  return nodes.filter((item) => {
+    return Boolean(item);
+  });
   // context 是当前正在解析的内容，所以不用考虑startIndex
-  return nodes;
+  // return nodes;
+}
+
+function createRoot(children, loc) {
+  return {
+    type: NodeTypes.ROOT,
+    children,
+    loc,
+  };
 }
 
 // 解析字符串
@@ -256,6 +283,6 @@ export function parser(template) {
   // 解析的时候 解析一点删除一点,解析的终止条件是模板的内容最终为空
   // 状态机 , 有限状态机。找到每一个字符串进行处理
   const context = createParserContext(template);
-
-  return parseChilren(context); // 返回上下文内容
+  const start = getCursor(context);
+  return createRoot(parseChilren(context), getSelection(context, start)); // 返回上下文内容)
 }
