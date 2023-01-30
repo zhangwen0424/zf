@@ -523,8 +523,12 @@ var initProps = (instance, userProps) => {
       }
     }
   }
-  instance.attrs = attrs;
-  instance.props = reactive(props);
+  if (instance.vnode.shapeFlag & 2 /* FUNCTIONAL_COMPONENT */) {
+    instance.props = attrs;
+  } else {
+    instance.attrs = attrs;
+    instance.props = reactive(props);
+  }
 };
 
 // packages/runtime-core/src/createVNode.ts
@@ -559,7 +563,7 @@ function toDisplayString(val) {
   return String(val);
 }
 function createVNode(type, props, children = null, patchFlag = 0) {
-  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : 0;
+  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : isFunction(type) ? 2 /* FUNCTIONAL_COMPONENT */ : 0;
   const vnode = {
     __v_isVNode: true,
     type,
@@ -735,9 +739,14 @@ function createRenderer(renderOptions2) {
   function setupRendererEffect(instance, el, anchor) {
     const componentUpdateFn = () => {
       if (!instance.isMounted) {
-        let { bm, m } = instance;
+        let { bm, m, vnode } = instance;
         invokeArrayFn(bm);
-        const subTree = instance.render.call(instance.proxy, instance.proxy);
+        let subTree;
+        if (vnode.shapeFlag & 2 /* FUNCTIONAL_COMPONENT */) {
+          subTree = vnode.type(instance.props, { slots: instance.slots });
+        } else {
+          subTree = instance.render.call(instance.proxy, instance.proxy);
+        }
         patch(null, subTree, el, anchor);
         instance.isMounted = true;
         instance.subTree = subTree;

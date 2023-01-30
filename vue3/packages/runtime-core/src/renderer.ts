@@ -2,7 +2,7 @@ import { activeEffect, reactive, ReactiveEffect } from "@vue/reactivity";
 import { invokeArrayFn, ShapeFlags } from "@vue/shared";
 import { PatchFlags } from "packages/shared/src/patchFlags";
 import { createComponentInstance, setupComponent } from "./component";
-import { Text, Fragment, isSameVnode } from "./createVNode";
+import { Text, Fragment, isSameVnode, isVNode } from "./createVNode";
 import { queueJob } from "./scheduler";
 import { getSeq } from "./seq";
 
@@ -72,6 +72,8 @@ export function createRenderer(renderOptions) {
           processComponent(n1, n2, container, anchor);
         }
     }
+    // class 组件  函数式组件
+    // 组件分成普通组件和函数式组件 （对于vue3 而言我们写的普通组件  通过调用render函数来返回虚拟节点的）
   };
 
   // 处理文本节点
@@ -140,12 +142,20 @@ export function createRenderer(renderOptions) {
       // 组件有自己的虚拟节点，返回的虚拟节点 subTree
 
       if (!instance.isMounted) {
-        let { bm, m } = instance; // bm:beforeMount, m:mounted
+        let { bm, m, vnode } = instance; // bm:beforeMount, m:mounted
 
         invokeArrayFn(bm); // beforeMount
 
         // 组件没有初始化，进行初始化
-        const subTree = instance.render.call(instance.proxy, instance.proxy); //将 proxy设置为状态
+        let subTree;
+
+        // 如果是函数式组件
+        if (vnode.shapeFlag & ShapeFlags.FUNCTIONAL_COMPONENT) {
+          subTree = vnode.type(instance.props, { slots: instance.slots });
+        } else {
+          subTree = instance.render.call(instance.proxy, instance.proxy); //将 proxy设置为状态
+        }
+
         patch(null, subTree, el, anchor);
         instance.isMounted = true;
         instance.subTree = subTree; //记录第一次的 subTree

@@ -337,6 +337,8 @@ function genVNodeCall(node, context) {
   if (isBlock) {
     push(`(${helper(OPEN_BLOCK)}(),`);
     push(helper(CREATE_ELEMENT_BLOCK));
+  } else {
+    push(helper(CREATE_ELEMENT_VNODE));
   }
   push(`(`);
   // 标签 属性 儿子
@@ -402,6 +404,10 @@ function genCompoundExpression(node, context) {
 
 // 生成代码
 function genNode(node, context) {
+  if (typeof node === "symbol") {
+    context.push(context.helper(FRAGMENT));
+    return;
+  }
   switch (node.type) {
     case NodeTypes.TEXT: //  文本
       genText(node, context);
@@ -438,17 +444,17 @@ function genNode(node, context) {
 
 // 代码生成
 function generate(ast) {
-  const context = createCodegenContext(); // 生成代码操作(换行、缩进)的上下文
-  genFunctionPreamble(ast, context); // 放导入,生成 imprt 语句
-  context.push(
-    // 生成导出函数
-    `export function (_ctx, _cache, $props, $setup, $data, $options){`
-  );
+  const context = createCodegenContext(); // 1.生成代码操作(换行、缩进)的上下文
+  genFunctionPreamble(ast, context); // 2.放导入,生成 imprt 语句
+  context
+    .push
+    // 3. ort function (_ctx, _cache, $props, $setup, $data, $options){`
+    ();
   context.indent();
   context.push(`return `); // return
   if (ast.codegenNode) {
     // 如果有codegen，用codegen
-    genNode(ast.codegenNode, context); // 生成节点
+    genNode(ast.codegenNode, context); // 4. 生成节点
   } else {
     context.push(null); // 如果没有节点则直接null
   }

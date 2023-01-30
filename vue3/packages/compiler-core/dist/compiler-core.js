@@ -486,6 +486,8 @@ function genVNodeCall(node, context) {
   if (isBlock) {
     push(`(${helper(OPEN_BLOCK)}(),`);
     push(helper(CREATE_ELEMENT_BLOCK));
+  } else {
+    push(helper(CREATE_ELEMENT_VNODE));
   }
   push(`(`);
   let list = [tag, props, children].filter(Boolean);
@@ -540,6 +542,10 @@ function genCompoundExpression(node, context) {
   }
 }
 function genNode(node, context) {
+  if (typeof node === "symbol") {
+    context.push(context.helper(FRAGMENT));
+    return;
+  }
   switch (node.type) {
     case 2 /* TEXT */:
       genText(node, context);
@@ -573,9 +579,7 @@ function genNode(node, context) {
 function generate(ast) {
   const context = createCodegenContext();
   genFunctionPreamble(ast, context);
-  context.push(
-    `export function (_ctx, _cache, $props, $setup, $data, $options){`
-  );
+  context.push();
   context.indent();
   context.push(`return `);
   if (ast.codegenNode) {

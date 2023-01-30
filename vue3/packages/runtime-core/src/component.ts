@@ -171,6 +171,11 @@ const initProps = (instance, userProps) => {
       }
     }
   }
-  instance.attrs = attrs;
-  instance.props = reactive(props);
+  // 函数式组件
+  if (instance.vnode.shapeFlag & ShapeFlags.FUNCTIONAL_COMPONENT) {
+    instance.props = attrs;
+  } else {
+    instance.attrs = attrs;
+    instance.props = reactive(props);
+  }
 };
