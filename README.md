@@ -266,3 +266,7 @@ node scripts/dev.js reactivity -f esm-browser
 - jiagou-prepare（预习课）
 
   - https://gitee.com/zhufengpeixun/jiagou-prepare
+
+- 2023jiagouke01-29-node（node 正式课）
+
+  - https://gitee.com/jw-speed/2023jiagouke01-29-node.git

@@ -1062,6 +1062,96 @@ var onUpdated = createHook("u" /* UPDATED */);
 var onBeforeUnmount = createHook("bum" /* BEFORE_UNMOUNT */);
 var onUnmounted = createHook("um" /* UNMOUNTED */);
 
+// packages/runtime-core/src/transition.ts
+function nextFrame(cb) {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(cb);
+  });
+}
+function resolveTransitionHooks(props) {
+  const { onBeforeEnter, onLeave, onEnter } = props;
+  return {
+    beforeEnter: (el) => {
+      onBeforeEnter(el);
+    },
+    enter(el, done) {
+      onEnter(el, done);
+    },
+    leave(el, remove) {
+      onLeave(el, remove);
+    }
+  };
+}
+function resolveTransitionProps(rawProps) {
+  const {
+    name = "v",
+    enterFromClass = `${name}-enter-from`,
+    enterActiveClass = `${name}-enter-active`,
+    enterToClass = `${name}-enter-to`,
+    leaveFromClass = `${name}-leave-from`,
+    leaveActiveClass = `${name}-leave-active`,
+    leaveToClass = `${name}-leave-to`,
+    onBeforeEnter,
+    onEnter,
+    onLeave
+  } = rawProps;
+  return {
+    onBeforeEnter(el) {
+      el.classList.add(enterFromClass);
+      el.classList.add(enterActiveClass);
+      onBeforeEnter && onBeforeEnter(el);
+    },
+    onEnter(el, done) {
+      function resolve() {
+        el.classList.remove(enterActiveClass);
+        el.classList.remove(enterToClass);
+        done && done();
+      }
+      nextFrame(() => {
+        el.classList.remove(enterFromClass);
+        el.classList.add(enterToClass);
+        if (!onEnter || onEnter.length <= 1) {
+          el.addEventListener("transitioned", resolve);
+        }
+      });
+      onEnter && onEnter(el, resolve);
+    },
+    onLeave(el, done) {
+      function resolve() {
+        el.classList.remove(leaveToClass);
+        el.classList.remove(leaveActiveClass);
+        done && done();
+      }
+      el.classList.add(leaveFromClass);
+      document.body.offsetHeight;
+      el.classList.add(leaveActiveClass);
+      nextFrame(() => {
+        el.classList.remove(leaveFromClass);
+        el.classList.remove(leaveToClass);
+        if (!onLeave || onLeave.length < 1) {
+          el.addEventListener("transitionend", resolve);
+        }
+      });
+      onLeave && onLeave(el, resolve);
+    }
+  };
+}
+function Transition(props, { slots }) {
+  return h(BaseTransition, resolveTransitionProps(props), slots);
+}
+var BaseTransition = {
+  props: { onBeforeEnter: Function, onEnter: Function, onLeave: Function },
+  setup(props, { slots }) {
+    const instance = getCurrentInstance();
+    return () => {
+      const innerChild = slots.default && slots.default();
+      const enterHooks = resolveTransitionHooks(props);
+      innerChild.transition = enterHooks;
+      let oldInnerChild = instance.subTree;
+    };
+  }
+};
+
 // packages/runtime-dom/src/index.ts
 var renderOptions = Object.assign(nodeOps, { patchProp });
 function createRenderer2(renderOptions2) {
@@ -1077,6 +1167,7 @@ export {
   ReactiveEffect,
   ReactiveFlags,
   Text,
+  Transition,
   activeEffect,
   computed,
   createComponentInstance,

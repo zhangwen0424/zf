@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      import { render, h, Transition } from "./runtime-dom.js";
+      // import {
+      //   render,
+      //   h,
+      //   Transition,
+      // } from "../../../node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js";
+
+      let props = {
+        onBeforeEnter(el) {
+          console.log(el, "进入之前");
+        },
+        onEnter(el, done) {
+          console.log(el, "进入");
+        },
+        onLeave(el) {
+          console.log(el, "离开");
+        },
+        a: 1,
+        b: 2,
+      };
+      render(
+        h(Transition, props, {
+          default(props) {
+            return h("div", {
+              style: { height: "100px", width: "100px", background: "red" },
+            });
+          },
+        }),
+        app
+      );
+
+      setTimeout(() => {
+        render(
+          h(
+            Transition,
+            { a: 1, b: 2 },
+            {
+              default(props) {
+                return h("p", {
+                  style: {
+                    height: "100px",
+                    width: "100px",
+                    background: "purple",
+                  },
+                });
+              },
+            }
+          ),
+          app
+        );
+      }, 2000);
+    </script>
+    <style>
+      .v-enter-active,
+      .v-leave-active {
+        transition: opacity 0.4s linear;
+      }
+      .v-enter-from,
+      .v-leave-to {
+        opacity: 0;
+      }
+    </style>
+  </body>
+</html>
