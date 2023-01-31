@@ -1148,6 +1148,13 @@ var BaseTransition = {
       const enterHooks = resolveTransitionHooks(props);
       innerChild.transition = enterHooks;
       let oldInnerChild = instance.subTree;
+      if (oldInnerChild) {
+        if (!isSameVnode(oldInnerChild, innerChild)) {
+          const levaingHooks = resolveTransitionHooks(props);
+          oldInnerChild.transition = levaingHooks;
+        }
+      }
+      return innerChild;
     };
   }
 };

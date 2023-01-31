@@ -1,4 +1,4 @@
-import { isSameVnode } from "vue";
+import { isSameVnode } from "./createVNode";
 import { getCurrentInstance } from "./component";
 import { h } from "./h";
 
