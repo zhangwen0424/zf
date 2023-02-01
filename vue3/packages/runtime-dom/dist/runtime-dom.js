@@ -753,15 +753,20 @@ function createRenderer(renderOptions2) {
         invokeArrayFn(m);
       } else {
         const prevSubTree = instance.subTree;
-        const { next, bu, u } = instance;
+        const { next, bu, u, vnode } = instance;
         if (next) {
           updatePreRender(instance, next);
         }
         invokeArrayFn(bu);
-        const nextSubTree = instance.render.call(
-          instance.proxy,
-          instance.proxy
-        );
+        let nextSubTree;
+        if (vnode.shapeFlag & 2 /* FUNCTIONAL_COMPONENT */) {
+          nextSubTree = vnode.type(instance.props, { slots: instance.slots });
+        } else {
+          nextSubTree = instance.render.call(
+            instance.proxy,
+            instance.proxy
+          );
+        }
         instance.subTree = nextSubTree;
         patch(prevSubTree, nextSubTree, el, anchor);
         invokeArrayFn(u);
@@ -800,7 +805,7 @@ function createRenderer(renderOptions2) {
   function shouldComponentUpdate(n1, n2) {
     const oldProps = n1.props;
     const newProps = n2.props;
-    if (n1.childre !== n2.children)
+    if (n1.childre || n2.children)
       return true;
     if (oldProps == newProps)
       return false;
@@ -965,7 +970,7 @@ function createRenderer(renderOptions2) {
     }
   };
   const mountElement = (vnode, container, anchor = null) => {
-    const { type, props, children, shapeFlag } = vnode;
+    const { type, props, children, shapeFlag, transition } = vnode;
     const el = vnode.el = hostCreateElement(type);
     if (props) {
       for (let key in props) {
@@ -979,7 +984,13 @@ function createRenderer(renderOptions2) {
         mountChildren(children, el);
       }
     }
+    if (transition) {
+      transition.beforeEnter(el);
+    }
     hostInsert(el, container, anchor);
+    if (transition) {
+      transition.enter(el);
+    }
   };
   const mountChildren = (children, container) => {
     children.forEach((child) => {
@@ -998,8 +1009,19 @@ function createRenderer(renderOptions2) {
       um && invokeArrayFn(um);
       return;
     }
-    hostRemove(vnode.el);
+    remove(vnode);
   };
+  function remove(vnode) {
+    const { el, transition } = vnode;
+    const performRemove = () => {
+      hostRemove(el);
+    };
+    if (transition) {
+      transition.leave(el, performRemove);
+    } else {
+      performRemove();
+    }
+  }
   const unmountChildren = (children) => {
     children.forEach((child) => {
       unmount(child);

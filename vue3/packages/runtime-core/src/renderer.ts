@@ -165,7 +165,7 @@ export function createRenderer(renderOptions) {
         // 更新
         const prevSubTree = instance.subTree;
         // 这里再下次渲染前需要更新属性，更新属性后再渲染，获取最新的虚拟ODM ， n2.props 来更instance.的props
-        const { next, bu, u } = instance; // bu:beforeUpdate, u:updated
+        const { next, bu, u, vnode } = instance; // bu:beforeUpdate, u:updated
 
         if (next) {
           // 说明属性有更新
@@ -173,11 +173,18 @@ export function createRenderer(renderOptions) {
         }
 
         invokeArrayFn(bu); // beforeUpdate
+        // 考虑函数式组件的情况
+        let nextSubTree;
+        if (vnode.shapeFlag & ShapeFlags.FUNCTIONAL_COMPONENT) {
+          nextSubTree = vnode.type(instance.props, { slots: instance.slots });
+        } else {
+          nextSubTree = instance.render.call(
+            // 这里调用render时会重新依赖收集
+            instance.proxy,
+            instance.proxy
+          );
+        }
 
-        const nextSubTree = instance.render.call(
-          instance.proxy,
-          instance.proxy
-        );
         instance.subTree = nextSubTree; // 更新子树的虚拟节点
         patch(prevSubTree, nextSubTree, el, anchor);
 
@@ -248,7 +255,8 @@ export function createRenderer(renderOptions) {
     const newProps = n2.props;
 
     // 如果组件有插槽也需要更新
-    if (n1.childre !== n2.children) return true; // 遇到插槽 前后不一致就要重新渲染
+    // if (n1.childre !== n2.children) return true; // 遇到插槽 前后不一致就要重新渲染
+    if (n1.childre || n2.children) return true; // 只要有孩子就需要更新
 
     if (oldProps == newProps) return false; // 属性一样就不需要更新
 
@@ -565,7 +573,7 @@ export function createRenderer(renderOptions) {
 
   // 递归遍历 虚拟节点将其转换成真实节点
   const mountElement = (vnode, container, anchor = null) => {
-    const { type, props, children, shapeFlag } = vnode;
+    const { type, props, children, shapeFlag, transition } = vnode;
     const el = (vnode.el = hostCreateElement(type)); // 当前真实节点对应的虚拟 dom
     // 创建属性
     if (props) {
@@ -581,8 +589,15 @@ export function createRenderer(renderOptions) {
         mountChildren(children, el); //是数组
       }
     }
+    // 挂载之前调用钩子函数
+    if (transition) {
+      transition.beforeEnter(el);
+    }
     // 创建真实节点
     hostInsert(el, container, anchor);
+    if (transition) {
+      transition.enter(el);
+    }
   };
 
   // 循环挂载儿子，暂时不处理 ['abc','bced']
@@ -613,9 +628,23 @@ export function createRenderer(renderOptions) {
 
     // 元素、文本卸载
     // if (shapeFlag & ShapeFlags.ELEMENT) {
-    hostRemove(vnode.el); // 对于元素来说 直接删除dom即可
+    // hostRemove(vnode.el); // 对于元素来说 直接删除dom即可
     // }
+
+    // 加入过渡的逻辑
+    remove(vnode);
   };
+  function remove(vnode) {
+    const { el, transition } = vnode;
+    const performRemove = () => {
+      hostRemove(el); // 写成回调的方式
+    };
+    if (transition) {
+      transition.leave(el, performRemove); //回调删除元素
+    } else {
+      performRemove();
+    }
+  }
 
   // 批量卸载儿子
   const unmountChildren = (children) => {

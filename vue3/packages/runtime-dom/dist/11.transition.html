@@ -21,7 +21,8 @@
         onBeforeEnter(el) {
           console.log(el, "进入之前");
         },
-        onEnter(el, done) {
+        // onEnter(el, done) {
+        onEnter(el) {
           console.log(el, "进入");
         },
         onLeave(el) {
@@ -48,7 +49,7 @@
             { a: 1, b: 2 },
             {
               default(props) {
-                return h("p", {
+                return h("div", {
                   style: {
                     height: "100px",
                     width: "100px",

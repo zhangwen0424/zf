@@ -108,6 +108,7 @@ const BaseTransition = {
 
       let oldInnerChild = instance.subTree; // 老的渲染的内容
       // div -> p
+      // 需要把老节点去掉，添加新的节点，卸载前把钩子给老节点
 
       if (oldInnerChild) {
         if (!isSameVnode(oldInnerChild, innerChild)) {
