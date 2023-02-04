@@ -8,3 +8,4 @@ export * from "./apiLifecycle";
 
 // 这些组件和用户写的 很像   自动调用setup
 export * from "./transition";
+export * from "./defineAsyncComponent";

@@ -1,3 +1,19 @@
+var __getOwnPropSymbols = Object.getOwnPropertySymbols;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __propIsEnum = Object.prototype.propertyIsEnumerable;
+var __objRest = (source, exclude) => {
+  var target = {};
+  for (var prop in source)
+    if (__hasOwnProp.call(source, prop) && exclude.indexOf(prop) < 0)
+      target[prop] = source[prop];
+  if (source != null && __getOwnPropSymbols)
+    for (var prop of __getOwnPropSymbols(source)) {
+      if (exclude.indexOf(prop) < 0 && __propIsEnum.call(source, prop))
+        target[prop] = source[prop];
+    }
+  return target;
+};
+
 // packages/runtime-dom/src/nodeOps.ts
 var nodeOps = {
   createElement(element) {
@@ -1181,6 +1197,71 @@ var BaseTransition = {
   }
 };
 
+// packages/runtime-core/src/defineAsyncComponent.ts
+var defineAsyncComponent = (_a) => {
+  var _b = _a, { loader } = _b, options = __objRest(_b, ["loader"]);
+  return {
+    setup() {
+      const loaded = ref(false);
+      const loading = ref(false);
+      const error = ref(false);
+      let attempts = ref(0);
+      let errorTimer;
+      if (options.timeout) {
+        errorTimer = setTimeout(() => {
+          error.value = true;
+        }, options.timeout);
+      }
+      let timer;
+      if (options.delay) {
+        timer = setTimeout(() => {
+          loading.value = true;
+        }, options.delay || 200);
+      } else {
+        loading.value = true;
+      }
+      let InteralComp;
+      function load() {
+        return loader().catch((err) => {
+          if (options.onError) {
+            return new Promise((resolve, reject) => {
+              const retry = () => {
+                resolve(load());
+              };
+              const fail = () => {
+                reject(err);
+              };
+              options.onError(err, retry, fail, ++attempts.value);
+            });
+          } else {
+            throw err;
+          }
+        });
+      }
+      load().then((comp) => {
+        loaded.value = true;
+        error.value = false;
+        InteralComp = comp;
+      }).catch((err) => {
+        error.value = true;
+      }).finally(() => {
+        loading.value = false;
+      });
+      return () => {
+        if (error.value) {
+          return h(options.errorComponent);
+        } else if (loading.value) {
+          return h(options.loadingComponent, { attempts });
+        } else if (loaded.value) {
+          return h(InteralComp);
+        } else {
+          return h(Fragment, []);
+        }
+      };
+    }
+  };
+};
+
 // packages/runtime-dom/src/index.ts
 var renderOptions = Object.assign(nodeOps, { patchProp });
 function createRenderer2(renderOptions2) {
@@ -1206,6 +1287,7 @@ export {
   createVNode,
   currentBlock,
   curretInstance,
+  defineAsyncComponent,
   dowatch,
   effect,
   getCurrentInstance,
