@@ -13,7 +13,7 @@ export function getCurrentInstance() {
 }
 
 // 创建实例
-export function createComponentInstance(n2) {
+export function createComponentInstance(n2, parent) {
   // getCurrentInstance
   const instance = {
     state: {},
@@ -29,6 +29,8 @@ export function createComponentInstance(n2) {
     setupState: {}, // setup 的状态
     exposed: {},
     slots: {}, // 存储当前组件提供的插槽
+    parent,
+    provides: parent ? parent.provides : Object.create(null), // 所有组件都有一个默认的provides属性
   }; // 用来记录组件的属性的，相关信息的
   return instance;
 }
