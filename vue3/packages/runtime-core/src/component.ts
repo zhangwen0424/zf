@@ -30,6 +30,7 @@ export function createComponentInstance(n2, parent) {
     exposed: {},
     slots: {}, // 存储当前组件提供的插槽
     parent,
+    ctx: {} as any, // 就是keep-alive组件才具备上下文
     provides: parent ? parent.provides : Object.create(null), // 所有组件都有一个默认的provides属性
   }; // 用来记录组件的属性的，相关信息的
   return instance;

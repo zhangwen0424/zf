@@ -1,6 +1,7 @@
 import { activeEffect, reactive, ReactiveEffect } from "@vue/reactivity";
 import { invokeArrayFn, ShapeFlags } from "@vue/shared";
 import { PatchFlags } from "packages/shared/src/patchFlags";
+import { isKeepAlive } from "./keepAlive";
 import { createComponentInstance, setupComponent } from "./component";
 import { Text, Fragment, isSameVnode, isVNode } from "./createVNode";
 import { queueJob } from "./scheduler";
@@ -113,7 +114,12 @@ export function createRenderer(renderOptions) {
   // 处理组件
   const processComponent = (n1, n2, el, anchor, parentComponent) => {
     if (n1 == null) {
-      mountComponent(n2, el, anchor, parentComponent);
+      if (n2.shapeFlag & ShapeFlags.COMPONENT_KEPT_ALIVE) {
+        // 组件缓存过了，不需要走挂载逻辑
+        parentComponent.ctx.activated(n2, el, anchor);
+      } else {
+        mountComponent(n2, el, anchor, parentComponent);
+      }
     } else {
       updateComponent(n1, n2, el, anchor, parentComponent); // 组件的属性变化了,或者插槽变化了
     }
@@ -127,6 +133,18 @@ export function createRenderer(renderOptions) {
 
     // 1 创建组件的实例
     const instance = createComponentInstance(n2, parentComponent);
+
+    if (isKeepAlive(n2)) {
+      instance.ctx.renderer = {
+        // keep-alive 特有的
+        createElement: hostCreateComment,
+        move(vnode, el) {
+          // keep-alive 缓存的一定是组件，不用判断vnode类型
+          hostInsert(vnode.component.subTree.el, el);
+        },
+        unmount,
+      };
+    }
 
     // 2 启动组件 给组件实例复制
     setupComponent(instance);
@@ -611,6 +629,11 @@ export function createRenderer(renderOptions) {
     const { shapeFlag, type, children } = vnode;
     if (type == Fragment) {
       return unmountChildren(children, parentComponent);
+    }
+    if (shapeFlag & ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE) {
+      // 告诉keepAlive组件 我需要的是将真实节点移动到缓存中
+      parentComponent.ctx.deactivated(vnode);
+      return;
     }
 
     // 组件卸载逻辑
