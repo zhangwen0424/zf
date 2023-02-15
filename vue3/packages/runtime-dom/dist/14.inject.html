@@ -49,9 +49,9 @@
       const ChildComponent = {
         setup() {
           provide("a", 1);
+          provide("b", 2);
 
           const state = inject("state1", {}); // 默认值
-
           return () => {
             return h(Text, state.name.value + state.age.value);
           };
@@ -65,10 +65,10 @@
 
           setTimeout(() => {
             name.value = "hello";
-          }, 1000);
+          }, 2000);
 
           return () => {
-            return h(ChildComponent);
+            return h(ChildComponent); // subTree
           };
         },
       };

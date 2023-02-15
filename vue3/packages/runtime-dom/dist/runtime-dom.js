@@ -765,7 +765,7 @@ function createRenderer(renderOptions2) {
         } else {
           subTree = instance.render.call(instance.proxy, instance.proxy);
         }
-        patch(null, subTree, el, anchor);
+        patch(null, subTree, el, anchor, instance);
         instance.isMounted = true;
         instance.subTree = subTree;
         invokeArrayFn(m);
@@ -1264,6 +1264,29 @@ var defineAsyncComponent = (_a) => {
   };
 };
 
+// packages/runtime-core/src/apiInject.ts
+var provide = (key, value) => {
+  const instance = getCurrentInstance();
+  if (!instance)
+    return;
+  let parentPrvoides = instance.parent && instance.parent.provides;
+  if (parentPrvoides === instance.provides) {
+    instance.provides = Object.create(parentPrvoides);
+  }
+  instance.provides[key] = value;
+};
+var inject = (key, defaultVal) => {
+  const instance = getCurrentInstance();
+  if (!instance)
+    return;
+  const provides = instance.parent && instance.parent.provides;
+  if (provides && key in provides) {
+    return provides[key];
+  } else {
+    return defaultVal;
+  }
+};
+
 // packages/runtime-dom/src/index.ts
 var renderOptions = Object.assign(nodeOps, { patchProp });
 function createRenderer2(renderOptions2) {
@@ -1294,6 +1317,7 @@ export {
   effect,
   getCurrentInstance,
   h,
+  inject,
   isReactive,
   isRef,
   isSameVnode,
@@ -1305,6 +1329,7 @@ export {
   onUnmounted,
   onUpdated,
   openBlock,
+  provide,
   proxyRefs,
   reactive,
   ref,

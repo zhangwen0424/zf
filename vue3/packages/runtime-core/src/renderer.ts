@@ -156,7 +156,7 @@ export function createRenderer(renderOptions) {
           subTree = instance.render.call(instance.proxy, instance.proxy); //将 proxy设置为状态
         }
 
-        patch(null, subTree, el, anchor);
+        patch(null, subTree, el, anchor, instance);
         instance.isMounted = true;
         instance.subTree = subTree; //记录第一次的 subTree
 
