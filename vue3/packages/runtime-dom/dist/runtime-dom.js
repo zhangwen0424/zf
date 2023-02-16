@@ -712,6 +712,7 @@ function createRenderer(renderOptions2) {
           processElement(n1, n2, container, anchor);
         } else if (shapeFlag & 6 /* COMPONENT */) {
           processComponent(n1, n2, container, anchor);
+        } else if (shapeFlag & 64 /* TELEPORT */) {
         }
     }
   };
@@ -1262,6 +1263,18 @@ var defineAsyncComponent = (_a) => {
   };
 };
 
+// packages/runtime-core/src/Teleport.ts
+var Teleport = {
+  __isTeleport: true,
+  process(n1, n2, container, anchor, internals) {
+  },
+  remove(vnode) {
+  }
+};
+var isTeleport = (val) => {
+  return !!val.__isTeleport;
+};
+
 // packages/runtime-dom/src/index.ts
 var renderOptions = Object.assign(nodeOps, { patchProp });
 function createRenderer2(renderOptions2) {
@@ -1276,6 +1289,7 @@ export {
   LicycleHooks,
   ReactiveEffect,
   ReactiveFlags,
+  Teleport,
   Text,
   Transition,
   activeEffect,
@@ -1295,6 +1309,7 @@ export {
   isReactive,
   isRef,
   isSameVnode,
+  isTeleport,
   isVNode,
   onBeforeMount,
   onBeforeUnmount,
