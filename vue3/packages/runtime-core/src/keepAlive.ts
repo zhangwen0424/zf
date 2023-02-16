@@ -45,6 +45,18 @@ export const KeepAlive = {
       cache.delete(key);
 
       // 需要根据删除的key 来移除
+      if (cacheVnode) {
+        let shapeFlag = cacheVnode.shapeFlag;
+        if (shapeFlag & ShapeFlags.COMPONENT_KEPT_ALIVE) {
+          shapeFlag -= ShapeFlags.COMPONENT_KEPT_ALIVE;
+        }
+        if (shapeFlag & ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE) {
+          shapeFlag -= ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE;
+        }
+        cacheVnode.shapeFlag = shapeFlag;
+        // 这里还需要将storageContainer中的节点删除
+        unmount(cacheVnode, storageContainer);
+      }
     }
 
     return () => {
@@ -65,7 +77,7 @@ export const KeepAlive = {
         keys.add(key); // 将当前的key 进行缓存
         if (max && keys.size > max) {
           // 超过缓存的最大限制了 ，此时要移除了
-          // pruneCache(keys.values().next().value); // iterator中的迭代器
+          pruneCache(keys.values().next().value); // iterator中的迭代器
         }
       }
 

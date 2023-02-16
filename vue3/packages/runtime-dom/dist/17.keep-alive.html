@@ -26,8 +26,19 @@
       } from "./runtime-dom.js";
 
       // import {
-      //     onUnmounted, onMounted, KeepAlive, h, render, Transition, defineAsyncComponent, Text, Teleport, provide, inject, ref
-      // } from '../../../node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js'
+      //   onUnmounted,
+      //   onMounted,
+      //   KeepAlive,
+      //   h,
+      //   render,
+      //   Transition,
+      //   defineAsyncComponent,
+      //   Text,
+      //   Teleport,
+      //   provide,
+      //   inject,
+      //   ref,
+      // } from "../../../node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js";
 
       // 核心就是将dom元素 暂存一下，创建一个空的div， 将渲染好的结果移入这个div中
       // 稍后命中了对应的组件，我就将这个匹配到的节点拿出来用
@@ -47,6 +58,36 @@
         },
       };
 
+      const Com2 = {
+        name: "Com2",
+        setup() {
+          onMounted(() => {
+            console.log("com2", "mounted");
+          });
+          onUnmounted(() => {
+            console.log("com2", "unmounted");
+          });
+          return () => {
+            return h("a", "Com2");
+          };
+        },
+      };
+
+      const Com3 = {
+        name: "Com3",
+        setup() {
+          onMounted(() => {
+            console.log("com3", "mounted");
+          });
+          onUnmounted(() => {
+            console.log("com3", "unmounted");
+          });
+          return () => {
+            return h("a", "Com3");
+          };
+        },
+      };
+
       render(
         h(
           KeepAlive,
@@ -59,6 +100,51 @@
         ),
         app
       );
+
+      setTimeout(() => {
+        render(
+          h(
+            KeepAlive,
+            { max: 2 },
+            {
+              default: () => {
+                return h(Com2, { key: 2 });
+              },
+            }
+          ),
+          app
+        );
+      }, 1000);
+
+      setTimeout(() => {
+        render(
+          h(
+            KeepAlive,
+            { max: 2 },
+            {
+              default: () => {
+                return h(Com3, { key: 3 });
+              },
+            }
+          ),
+          app
+        );
+      }, 2000);
+
+      setTimeout(() => {
+        render(
+          h(
+            KeepAlive,
+            { max: 2 },
+            {
+              default: () => {
+                return h(Com1, { key: 1 });
+              },
+            }
+          ),
+          app
+        );
+      }, 3000);
 
       // 页签根据缓存来创建的，可以增添一个缓存列表， 我希望关闭其他页签
       // 将缓存列表移除掉

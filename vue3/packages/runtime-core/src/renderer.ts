@@ -137,7 +137,7 @@ export function createRenderer(renderOptions) {
     if (isKeepAlive(n2)) {
       instance.ctx.renderer = {
         // keep-alive 特有的
-        createElement: hostCreateComment,
+        createElement: hostCreateElement,
         move(vnode, el) {
           // keep-alive 缓存的一定是组件，不用判断vnode类型
           hostInsert(vnode.component.subTree.el, el);
@@ -204,7 +204,7 @@ export function createRenderer(renderOptions) {
         }
 
         instance.subTree = nextSubTree; // 更新子树的虚拟节点
-        patch(prevSubTree, nextSubTree, el, anchor);
+        patch(prevSubTree, nextSubTree, el, anchor, instance);
 
         invokeArrayFn(u); // updated
       }

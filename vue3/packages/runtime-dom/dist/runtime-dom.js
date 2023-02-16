@@ -610,6 +610,17 @@ var KeepAlive = {
       let cacheVnode = cache.get(key);
       keys.delete(key);
       cache.delete(key);
+      if (cacheVnode) {
+        let shapeFlag = cacheVnode.shapeFlag;
+        if (shapeFlag & 512 /* COMPONENT_KEPT_ALIVE */) {
+          shapeFlag -= 512 /* COMPONENT_KEPT_ALIVE */;
+        }
+        if (shapeFlag & 256 /* COMPONENT_SHOULD_KEEP_ALIVE */) {
+          shapeFlag -= 256 /* COMPONENT_SHOULD_KEEP_ALIVE */;
+        }
+        cacheVnode.shapeFlag = shapeFlag;
+        unmount(cacheVnode, storageContainer);
+      }
     }
     return () => {
       let vnode = slots.default();
@@ -625,6 +636,7 @@ var KeepAlive = {
         comp = vnode;
         keys.add(key);
         if (max && keys.size > max) {
+          pruneCache(keys.values().next().value);
         }
       }
       vnode.shapeFlag = vnode.shapeFlag | 256 /* COMPONENT_SHOULD_KEEP_ALIVE */;
@@ -841,7 +853,7 @@ function createRenderer(renderOptions2) {
     const instance = createComponentInstance(n2, parentComponent);
     if (isKeepAlive(n2)) {
       instance.ctx.renderer = {
-        createElement: hostCreateComment,
+        createElement: hostCreateElement,
         move(vnode, el2) {
           hostInsert(vnode.component.subTree.el, el2);
         },
@@ -883,7 +895,7 @@ function createRenderer(renderOptions2) {
           );
         }
         instance.subTree = nextSubTree;
-        patch(prevSubTree, nextSubTree, el, anchor);
+        patch(prevSubTree, nextSubTree, el, anchor, instance);
         invokeArrayFn(u);
       }
     };
