@@ -11,14 +11,14 @@
     <div id="app"></div>
     <div id="root"></div>
     <script type="module">
-      // import {
-      //   Teleport,
-      //   h,
-      //   render,
-      //   Transition,
-      //   defineAsyncComponent,
-      //   Text,
-      // } from "./runtime-dom.js";
+      import {
+        Teleport,
+        h,
+        render,
+        Transition,
+        defineAsyncComponent,
+        Text,
+      } from "./runtime-dom.js";
       // import {
       //   Teleport,
       //   h,
@@ -46,23 +46,23 @@
       // render(h(VueComponent), app);
 
       // 挂载
-      // render(
-      //   h(Teleport, { to: "#root" }, [h(Text, 1), h(Text, 1), h(Text, 1)]),
-      //   app
-      // );
+      render(
+        h(Teleport, { to: "#root" }, [h(Text, 1), h(Text, 1), h(Text, 1)]),
+        app
+      );
 
       // 更新
-      // setTimeout(() => {
-      //   render(
-      //     h(Teleport, { to: "#app" }, [h(Text, 1), h(Text, 2), h(Text, 3)]),
-      //     app
-      //   );
-      // }, 1000);
+      setTimeout(() => {
+        render(
+          h(Teleport, { to: "#app" }, [h(Text, 1), h(Text, 2), h(Text, 3)]),
+          app
+        );
+      }, 1000);
 
       // // 卸载
-      // setTimeout(() => {
-      //   render(null, app);
-      // }, 2000);
+      setTimeout(() => {
+        render(null, app);
+      }, 2000);
     </script>
   </body>
 </html>

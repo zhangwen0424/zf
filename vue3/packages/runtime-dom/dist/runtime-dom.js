@@ -129,6 +129,9 @@ var isString = function(value) {
 var invokeArrayFn = function(fns) {
   fns && fns.forEach((fn) => fn());
 };
+function ensureArray(val) {
+  return Array.isArray(val) ? val : [val];
+}
 
 // packages/reactivity/src/effect.ts
 var effect = function(fn, options = {}) {
@@ -649,14 +652,25 @@ var KeepAlive = {
 var Teleport = {
   __isTeleport: true,
   process(n1, n2, container, anchor, internals) {
-    const { mountChildren, patchChildren } = internals;
+    const { mountChildren, patchChildren, move } = internals;
     if (!n1) {
-      debugger;
       let target = n2.target = document.querySelector(n2.props.to);
+      if (target) {
+        n2.children = ensureArray(n2.children);
+        mountChildren(n2.children, target);
+      }
     } else {
+      n1.children = ensureArray(n1.children);
+      n2.children = ensureArray(n2.children);
+      patchChildren(n1, n2);
+      if (n2.props.to !== n1.props.to) {
+        let target = n2.target = document.querySelector(n2.props.to);
+        n2.children.forEach((child) => move(child, target));
+      }
     }
   },
   remove(vnode) {
+    vnode.target.innerHTML = "";
   }
 };
 var isTeleport = (val) => {
@@ -829,7 +843,6 @@ function createRenderer(renderOptions2) {
         } else if (shapeFlag & 6 /* COMPONENT */) {
           processComponent(n1, n2, container, anchor, parentComponent);
         } else if (shapeFlag & 64 /* TELEPORT */) {
-          debugger;
           type.process(n1, n2, container, anchor, {
             mountChildren,
             patchChildren,
@@ -1170,6 +1183,9 @@ function createRenderer(renderOptions2) {
       unmount(subTree, parentComponent);
       um && invokeArrayFn(um);
       return;
+    }
+    if (shapeFlag & 64 /* TELEPORT */) {
+      return type.remove(vnode);
     }
     remove(vnode);
   };

@@ -72,7 +72,6 @@ export function createRenderer(renderOptions) {
           // 组件的处理
           processComponent(n1, n2, container, anchor, parentComponent);
         } else if (shapeFlag & ShapeFlags.TELEPORT) {
-          debugger;
           // 穿梭框
           type.process(n1, n2, container, anchor, {
             mountChildren, //挂载儿子
@@ -663,10 +662,9 @@ export function createRenderer(renderOptions) {
       return;
     }
 
-    // 元素、文本卸载
-    // if (shapeFlag & ShapeFlags.ELEMENT) {
-    // hostRemove(vnode.el); // 对于元素来说 直接删除dom即可
-    // }
+    if (shapeFlag & ShapeFlags.TELEPORT) {
+      return type.remove(vnode);
+    }
 
     // 加入过渡的逻辑
     remove(vnode);

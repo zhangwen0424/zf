@@ -15,3 +15,7 @@ export const invokeArrayFn = function (fns) {
 };
 
 export * from "./shapeFlag";
+
+export function ensureArray(val) {
+  return Array.isArray(val) ? val : [val];
+}
