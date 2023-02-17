@@ -11,5 +11,6 @@ export * from "./transition";
 export * from "./defineAsyncComponent";
 
 // teleport suspense 组件都是源码中将渲染逻辑交给用户处理
+export * from "./Teleport";
 export * from "./apiInject";
 export * from "./keepAlive";

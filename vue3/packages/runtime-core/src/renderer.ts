@@ -71,6 +71,21 @@ export function createRenderer(renderOptions) {
         } else if (shapeFlag & ShapeFlags.COMPONENT) {
           // 组件的处理
           processComponent(n1, n2, container, anchor, parentComponent);
+        } else if (shapeFlag & ShapeFlags.TELEPORT) {
+          debugger;
+          // 穿梭框
+          type.process(n1, n2, container, anchor, {
+            mountChildren, //挂载儿子
+            patchChildren, //更新儿子
+            move(vnode, el, anchor) {
+              //移动节点
+              hostInsert(
+                vnode.component ? vnode.component.subTree.el : vnode.el,
+                el,
+                anchor
+              );
+            },
+          });
         }
     }
     // class 组件  函数式组件

@@ -1,4 +1,5 @@
 import { isFunction, isObject, isString, ShapeFlags } from "@vue/shared";
+import { isTeleport } from "./Teleport";
 export const Text = Symbol(); // 内置，文本类型
 export const Fragment = Symbol(); // 包裹节点
 export function isVNode(value) {
@@ -49,7 +50,9 @@ export function createVNode(type, props, children = null, patchFlag = 0) {
   const shapeFlag = isString(type)
     ? ShapeFlags.ELEMENT
     : isObject(type) // type 是对象说明是一个组件了
-    ? ShapeFlags.STATEFUL_COMPONENT
+    ? isTeleport(type)
+      ? ShapeFlags.TELEPORT
+      : ShapeFlags.STATEFUL_COMPONENT
     : isFunction(type)
     ? ShapeFlags.FUNCTIONAL_COMPONENT
     : 0;

@@ -645,6 +645,24 @@ var KeepAlive = {
   }
 };
 
+// packages/runtime-core/src/Teleport.ts
+var Teleport = {
+  __isTeleport: true,
+  process(n1, n2, container, anchor, internals) {
+    const { mountChildren, patchChildren } = internals;
+    if (!n1) {
+      debugger;
+      let target = n2.target = document.querySelector(n2.props.to);
+    } else {
+    }
+  },
+  remove(vnode) {
+  }
+};
+var isTeleport = (val) => {
+  return !!val.__isTeleport;
+};
+
 // packages/runtime-core/src/createVNode.ts
 var Text = Symbol();
 var Fragment = Symbol();
@@ -677,7 +695,7 @@ function toDisplayString(val) {
   return String(val);
 }
 function createVNode(type, props, children = null, patchFlag = 0) {
-  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? 4 /* STATEFUL_COMPONENT */ : isFunction(type) ? 2 /* FUNCTIONAL_COMPONENT */ : 0;
+  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObject(type) ? isTeleport(type) ? 64 /* TELEPORT */ : 4 /* STATEFUL_COMPONENT */ : isFunction(type) ? 2 /* FUNCTIONAL_COMPONENT */ : 0;
   const vnode = {
     __v_isVNode: true,
     type,
@@ -810,6 +828,19 @@ function createRenderer(renderOptions2) {
           processElement(n1, n2, container, anchor, parentComponent);
         } else if (shapeFlag & 6 /* COMPONENT */) {
           processComponent(n1, n2, container, anchor, parentComponent);
+        } else if (shapeFlag & 64 /* TELEPORT */) {
+          debugger;
+          type.process(n1, n2, container, anchor, {
+            mountChildren,
+            patchChildren,
+            move(vnode, el, anchor2) {
+              hostInsert(
+                vnode.component ? vnode.component.subTree.el : vnode.el,
+                el,
+                anchor2
+              );
+            }
+          });
         }
     }
   };
@@ -1386,6 +1417,7 @@ export {
   LicycleHooks,
   ReactiveEffect,
   ReactiveFlags,
+  Teleport,
   Text,
   Transition,
   activeEffect,
@@ -1407,6 +1439,7 @@ export {
   isReactive,
   isRef,
   isSameVnode,
+  isTeleport,
   isVNode,
   onBeforeMount,
   onBeforeUnmount,
