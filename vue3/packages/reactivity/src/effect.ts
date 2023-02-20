@@ -120,3 +120,47 @@ function cleanupEffect(effect) {
   }
   effect.deps.length = 0; // 清空依赖的列表
 }
+
+export let activeEffectScope; // 当前正在执行的作用域
+class EffectScope {
+  active = true;
+  parent;
+  effects = []; // 收集所有的effect
+  scopes; // 每个effectScope 可以记录自己的子effectScope
+  run(fn) {
+    if (this.active) {
+      try {
+        this.parent = activeEffectScope;
+        activeEffectScope = this;
+        return fn();
+      } finally {
+        activeEffectScope = this.parent;
+      }
+    }
+  }
+  stop() {
+    if (this.active) {
+      for (let i = 0; i < this.effects.length; i++) {
+        this.effects[i].stop(); // 停止所有的effect
+      }
+      this.active = false;
+    }
+    if (this.scopes) {
+      for (let i = 0; i < this.scopes.length; i++) {
+        this.scopes[i].stop();
+      }
+    }
+  }
+}
+
+export function effectScope(detached = false) {
+  // 如果自己是非独立的而且被嵌套到了父亲中
+
+  let effect = new EffectScope();
+
+  if (!detached && activeEffectScope) {
+    activeEffectScope.scopes || (activeEffectScope.scopes = []).push(effect);
+  }
+
+  return effect;
+}

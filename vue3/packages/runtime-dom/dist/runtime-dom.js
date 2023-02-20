@@ -220,6 +220,44 @@ function cleanupEffect(effect2) {
   }
   effect2.deps.length = 0;
 }
+var activeEffectScope;
+var EffectScope = class {
+  constructor() {
+    this.active = true;
+    this.effects = [];
+  }
+  run(fn) {
+    if (this.active) {
+      try {
+        this.parent = activeEffectScope;
+        activeEffectScope = this;
+        return fn();
+      } finally {
+        activeEffectScope = this.parent;
+      }
+    }
+  }
+  stop() {
+    if (this.active) {
+      for (let i = 0; i < this.effects.length; i++) {
+        this.effects[i].stop();
+      }
+      this.active = false;
+    }
+    if (this.scopes) {
+      for (let i = 0; i < this.scopes.length; i++) {
+        this.scopes[i].stop();
+      }
+    }
+  }
+};
+function effectScope(detached = false) {
+  let effect2 = new EffectScope();
+  if (!detached && activeEffectScope) {
+    activeEffectScope.scopes || (activeEffectScope.scopes = []).push(effect2);
+  }
+  return effect2;
+}
 
 // packages/reactivity/src/ref.ts
 function isRef(value) {
@@ -1437,6 +1475,7 @@ export {
   Text,
   Transition,
   activeEffect,
+  activeEffectScope,
   computed,
   createComponentInstance,
   createElementBlock,
@@ -1448,6 +1487,7 @@ export {
   defineAsyncComponent,
   dowatch,
   effect,
+  effectScope,
   getCurrentInstance,
   h,
   inject,
