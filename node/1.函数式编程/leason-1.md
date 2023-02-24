@@ -181,25 +181,23 @@ lodash 中的柯里化函数。被科里化的函数所需的参数都被提供�
 
 ```js
 const util = {};
-["String", "Number", "Boolean"].forEach((typing)
-=> {
-util["is" + typing] = isType(typing);
+["String", "Number", "Boolean"].forEach((typing) => {
+  util["is" + typing] = isType(typing);
 });
-let curried = _.curry(isType); // 将函数进行柯里化
-处理
+let curried = _.curry(isType); // 将函数进行柯里化处理
 const isString = curried("String"); // 缓存参数
+
 function add(a, b, c) {
-return a + b + c;
+  return a + b + c;
 }
 function curry(func) {
-let curried = (...args) => {
-if (args.length < func.length) {
-return (...rest) => curried(...args,
-...rest);
-}
-return func(...args);
-};
-return curried;
+  let curried = (...args) => {
+    if (args.length < func.length) {
+      return (...rest) => curried(...args, ...rest);
+    }
+    return func(...args);
+  };
+  return curried;
 }
 let curriedAdd = curry(add);
 ```
@@ -220,22 +218,22 @@ console.log(curriedAdd(1, 2, 3));
 console.log(curriedAdd(1)(2, 3));
 console.log(curriedAdd(1)(2)(3));
 function double(n) {
-return n \* 2;
+  return n * 2;
 }
 function toFixed(n) {
-return n.toFixed(2);
+  return n.toFixed(2);
 }
 function addPrefix(n) {
-return "£" + n;
+  return "£" + n;
 }
 const _ = require("lodash");
 function flowRight(...fns) {
-if (fns.length === 0) {
-return fns[0];
-}
-return fns.reduceRight((a, b) => {
-return (...args) => b(a(...args));
-});
+  if (fns.length === 0) {
+    return fns[0];
+  }
+  return fns.reduceRight((a, b) => {
+    return (...args) => b(a(...args));
+  });
 }
 // a => (...args) => toFiexed(double(...args))
 // b => addPrefix
@@ -243,25 +241,27 @@ return (...args) => b(a(...args));
 const composedFn = flowRight(addPrefix, toFixed,double);
 const returnVal = composedFn(10000);
 console.log(returnVal);
+
 const _ = require("lodash");
 const str = "click button"; //CLICK*BUTTON
+
 let flow1 = *.split(str, " ");
 let flow2 = _.join(flow1, "_");
 let flow3 = _.toUpper(flow2);
 console.log(flow3);
+
 // 将函数进行组合，先将函数进行转化
 const split = _.curry((sep, str) => _.split(str,sep));
 const join = _.curry((sep, str) => _.join(str,sep));
 const composedFn1 = _.flowRight(_.toUpper,join("_"), split(" "));
 console.log(composedFn1(str));
+
 // lodash 函数式编程,帮我们自动科里化，并且数据最后传入
-const lodash = require("lodash/fp");
-const composedFn2 = lodash.flowRight(
-_.toUpper,
-lodash.join("\_"),
-lodash.split(" ")
+const lodash = require("lodash/fp"); // 会自动将内部的方法柯里化， 都给你处理成参数先行的特点
+const composedFn2 = lodash.flowRight(_.toUpper,lodash.join("_"),lodash.split(" ")
 );
 console.log(composedFn2(str));
+
 // 这种模式我们也称之为 PointFree，把数据处理的过程先定义成一种与参数无关的合成运算就叫 Pointfree 8.解决异步并发问题
 
 ```
@@ -270,26 +270,24 @@ console.log(composedFn2(str));
 
 ### 8.解决异步并发问题
 
-### 8.1 哨兵变量
+#### 8.1 哨兵变量
 
 ```js
 const fs = require("fs"); // file system
- const path = require("path");
+const path = require("path");
 let times = 0; // 哨兵变量
-let school = {}
+let school = {};
 function out(key, value) {
-school[key] = value;
-if (++times == 2) {
-console.log(school)
+  school[key] = value;
+  if (++times == 2) {
+    console.log(school);
+  }
 }
-}
-fs.readFile(path.resolve(**dirname, "age.txt"),
-"utf8", function (err, data) {
-out("age", data);
+fs.readFile(path.resolve(__dirname, "age.txt"), "utf8", function (err, data) {
+  out("age", data);
 });
-fs.readFile(path.resolve(**dirname, "name.txt"),
-"utf8", function (err, data) {
-out("name", data);
+fs.readFile(path.resolve(__dirname, "name.txt"), "utf8", function (err, data) {
+  out("name", data);
 });
 ```
 
@@ -299,25 +297,23 @@ out("name", data);
 const fs = require("fs"); // file system
 const path = require("path");
 function after(times, callback) {
-// 高阶函数来解决异步并发问题
-let data = {};
-return function (key, value) {
-data[key] = value;
-if (--times === 0) {
-callback(data);
-}
-};
+  // 高阶函数来解决异步并发问题
+  let data = {};
+  return function (key, value) {
+    data[key] = value;
+    if (--times === 0) {
+      callback(data);
+    }
+  };
 }
 let out = after(2, (data) => {
-console.log(data);
+  console.log(data);
 });
-fs.readFile(path.resolve(**dirname, "age.txt"),
-"utf8", function (err, data) {
-out("age", data);
+fs.readFile(path.resolve(__dirname, "age.txt"), "utf8", function (err, data) {
+  out("age", data);
 });
-fs.readFile(path.resolve(**dirname, "name.txt"),
-"utf8", function (err, data) {
-out("name", data);
+fs.readFile(path.resolve(__dirname, "name.txt"), "utf8", function (err, data) {
+  out("name", data);
 });
 ```
 
@@ -326,38 +322,34 @@ out("name", data);
 ```js
 const fs = require("fs");
 const path = require("path");
-// 发布订阅的核心就是将订阅函数存放到数组中，稍后事情发生
-了 循环数组依次调用
+// 发布订阅的核心就是将订阅函数存放到数组中，稍后事情发生了 循环数组依次调用
 // 不订阅也能发布 （订阅和发布之间没有任何关系）
 let school = {};
 let events = {
-\_arr: [],
-on(callback) {
-// 将要订阅的函数保存起来
-this.\_arr.push(callback);
-},
-emit(key, value) {
-school[key] = value;
-this.\_arr.forEach((callback) =>
-callback(school));
-}
+  _arr: [],
+  on(callback) {
+    // 将要订阅的函数保存起来
+    this._arr.push(callback);
+  },
+  emit(key, value) {
+    school[key] = value;
+    this._arr.forEach((callback) =>callback(school));
+  }
 };
 events.on((data) => {
-if (Object.keys(data).length === 2) {
-console.log(data);
-}
+  if (Object.keys(data).length === 2) {
+    console.log(data);
+  }
 });
 
 events.on((data) => {
-console.log("读取一个完毕", data);
+  console.log("读取一个完毕", data);
 });
-fs.readFile(path.resolve(**dirname, "age.txt"),
-"utf8", function (err, data) {
-events.emit("age", data);
+fs.readFile(path.resolve(**dirname, "age.txt"),"utf8", function (err, data) {
+  events.emit("age", data);
 });
-fs.readFile(path.resolve(**dirname, "name.txt"),
-"utf8", function (err, data) {
-events.emit("name", data);
+fs.readFile(path.resolve(**dirname, "name.txt"),"utf8", function (err, data) {
+  events.emit("name", data);
 });
 // 发布订阅模式，可以监控到每次完成的情况，而且可以自己控制逻辑
 

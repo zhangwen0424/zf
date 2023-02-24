@@ -51,10 +51,49 @@ function sum(a, b, c) {
 function curry(func) {
   const curried = (...args) => {
     if (args.length < func.length) {
+      return (...other) => curried(...args, ...other);
     }
     return func(...args);
   };
   return curried;
 }
 const curriedSum = curry(sum);
-console.log(curriedSum(1, 2)); // 如果执行的参数没有达到函数的参数 此时会返回一个新函数来继续等待接受剩余的参数
+console.log(curriedSum(1, 2)(3)); // 如果执行的参数没有达到函数的参数 此时会返回一个新函数来继续等待接受剩余的参数
+
+// 组合 compose 组合函数 （redux compose， koa express 组合函数）  1） 处理请求参数 2） 看用户是否权限  3） 响应内容
+
+function double(n) {
+  return n * 2;
+}
+function toFiexd(n) {
+  return n.toFiexd(2);
+}
+function addPrefix(n) {
+  return "£" + n;
+}
+
+// addPrefix(toFiexd(double(10000))) // 洋葱模型
+// double(10000) | toFiexd | addPrefix //   过滤器的用法 管道 （滤网）  vue2 filter
+
+// 组合
+function flowRight(...fns) {
+  if (fns.length == 1) {
+    // 只有一个函数就不组合了
+    return fns[0];
+  }
+  // 最终reduce返回的是一个函数
+  return fns.reduceRight(
+    (a, b) =>
+      (...args) =>
+        b(a(...args))
+  );
+}
+// double -> a 从right开始
+// toFiexd -> b
+// a -> (...args)=> toFiexd(double(...args))
+
+// addPrefix( toFiexd(double(1000)))
+
+const composed = flowRight(addPrefix, toFiexd, double);
+const r = composed(10000);
+console.log("r:", r);
