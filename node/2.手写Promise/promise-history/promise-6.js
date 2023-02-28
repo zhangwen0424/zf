@@ -5,7 +5,7 @@ const REJECTED = "REJECTED";
 console.log("my");
 
 function resolvePromise(promise2, x, resolve, reject) {
-  // console.log(promise2, x, resolve, reject);
+  console.log(promise2, x, resolve, reject);
   if (promise2 === x) {
     return reject(
       new TypeError(
@@ -16,7 +16,7 @@ function resolvePromise(promise2, x, resolve, reject) {
   // 正常情况我们要分析x是不是promise, 如果x是普通值就直接和之前一样就resolve就好了
   // 判断这个x是不是promise，不能用instanceof 因为别人的promise和我的没法instanceof
   // 只有x 是对象或者函数才有可能是一个promise
-  if ((typeof x === "object" && x !== null) || typeof x === "function") {
+  if ((typeof x == "object" && x != null) || typeof x == "function") {
     let called = false;
     try {
       let then = x.then;
@@ -65,10 +65,6 @@ class Promise {
 
     // 用户调用的成功和失败
     const resolve = (value) => {
-      if (value instanceof Promise) {
-        // 实现直接resolve一个promise的情况
-        return value.then(resolve, reject);
-      }
       if (this.status == PENDING) {
         this.status = FULFILLED;
         this.value = value;
@@ -92,15 +88,6 @@ class Promise {
     }
   }
   then(onFulfilled, onRejected) {
-    // 值的穿透，没写给你个默认值，让他传递到下一个then中即可
-    onFulfilled = typeof onFulfilled == "function" ? onFulfilled : (v) => v;
-    onRejected =
-      typeof onRejected === "function"
-        ? onRejected
-        : (err) => {
-            throw err;
-          };
-
     // 不停的创建新的 promise，来实现链式调用
     let promise2 = new Promise((resolve, reject) => {
       // 4.调用then 的时候来判断成功还是失败
@@ -157,14 +144,4 @@ class Promise {
     return promise2;
   }
 }
-Promise.deferred = function () {
-  let dfd = {};
-  dfd.promise = new Promise((resolve, reject) => {
-    dfd.resolve = resolve;
-    dfd.reject = reject;
-  });
-  return dfd;
-};
-// npm install promises-aplus-tests -g
-
 module.exports = Promise; // export default

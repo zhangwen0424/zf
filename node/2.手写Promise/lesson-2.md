@@ -92,7 +92,7 @@ class Promise {
 module.exports = Promise; // export default
 ```
 
-### 2.2 Promise 异步情况处理
+#### 2.2 Promise 异步情况处理
 
 - 调用 then 时 promise 的状态可能还是等待态，此时会将成功的回调和失败的回调收集起来，等待状态变化时在调用对应的回调。 （订阅）
 - 同一个 promise 对象多次调用 then 方法。当成功或失败的时候这些回调会按照注册顺序被依次执行。（发布）
@@ -272,6 +272,7 @@ const promise2 = new Promise((resolve, reject) => {
 promise2.then(null, (err) => {
   console.log(err);
 });
+
 function resolvePromise(promise2, x, resolve, reject) {
   if (promise2 === x) {
     return reject(
@@ -287,19 +288,216 @@ function resolvePromise(promise2, x, resolve, reject) {
 
 ```js
 // 其它人实现的 promise 可能是这样实现的~
-let promise = {}
-let times = 0
-Object.defineProperty(promise,'then',{
-get(){
-if(++times === 2){
-throw new Error();
-}
-}
-})
-promise.then // 第一次取 then 正常
-promise.then // 第二次取 then 报错
-// 所以要避免多次取 then 的情况
-function resolvePromise(promise2, x, resolve,
-reject) {
+let promise = {};
+let times = 0;
+Object.defineProperty(promise, "then", {
+  get() {
+    if (++times === 2) {
+      throw new Error();
+    }
+  },
+});
+promise.then; // 第一次取 then 正常
+promise.then; // 第二次取 then 报错
 
+// 所以要避免多次取 then 的情况
+function resolvePromise(promise2, x, resolve, reject) {
+  if (promise2 === x) {
+    return reject(
+      new TypeError(
+        "[TypeError:Chaining cycle detected for promise #<Promise>]"
+      )
+    );
+  }
+  // 如何判断x是不是promise?  就看有没有then方法，有then方法的前提得是x是一个对象或者函数
+  if ((typeof x === "object" && x !== null) || typeof x === "function") {
+    try {
+      let then = x.then; // 缓存then
+      if (typeof then === "function") {
+        //看then是不是一个函数
+        // 如果有一个then方法那么就说他是promise
+        // 是promise 要判断是成功的promise还是失败的promise，在调用promise2对应的resolve或者reject
+        then.call(
+          x,
+          (y) => {
+            resolve(y);
+          },
+          (r) => {
+            reject(r);
+          }
+        );
+      } else {
+        resolve(x); // 这里直接成功即可 普通值的情况
+      }
+    } catch (e) {
+      reject(e); // 直接失败即可
+    }
+  } else {
+    resolve(x); // 这里直接成功即可 普通值的情况
+  }
+}
+```
+
+##### 3. 防止重复调用
+
+```js
+let otherPromise = {
+  then(onFulfilled, onRejected) {
+    // 别人家的 promise 可能既调用了成功又调用了失败
+    throw new Error(onFulfilled("ok"));
+    onRejected("no ok");
+  },
+};
+const promise2 = new Promise((resolve, reject) => {
+  resolve("ok");
+}).then((data) => {
+  return otherPromise; // 返回的不是自己的
+  promise;
+});
+
+if ((typeof x === "object" && x !== null) || typeof x === "function") {
+  let called = false;
+  try {
+    let then = x.then;
+    if (typeof then === "function") {
+      then.call(
+        x,
+        (y) => {
+          if (called) return; // 成功在调用失败
+          called = true;
+          resolve(y);
+        },
+        (r) => {
+          if (called) return; // 失败在调用成功
+          called = true;
+          reject(r);
+        }
+      );
+    } else {
+      resolve(x);
+    }
+  } catch (e) {
+    if (called) return; // 失败在调用成功
+    called = true;
+    reject(e);
+  }
+} else {
+  resolve(x);
+}
+```
+
+##### 4) 递归解析
+
+```js
+new Promise((resolve, reject) => {
+  resolve();
+})
+  .then(() => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        resolve(
+          new Promise((resolve, reject) => {
+            setTimeout(() => {
+              resolve(100);
+            }, 1000);
+          })
+        );
+      }, 1000);
+    });
+  })
+  .then((data) => {
+    console.log(data);
+  });
+
+then.call(
+  x,
+  (y) => {
+    if (called) return;
+    called = true;
+    resolvePromise(promise2, y, resolve, reject); // 如果resolve的值还是promise，则递归析
+  },
+  (r) => {
+    if (called) return;
+    called = true;
+    reject(r);
+  }
+);
+```
+
+#### 2.5 then 中可选参数
+
+如果当前 then 中没有处理成功和失败，则会穿透到下一个
+then 中进行处理
+
+```js
+const promise1 = new Promise((resolve,reject)=>{
+    resolve('ok');
+})
+// 成功的传递
+promise1.then().then().then((data=>{
+    console.log(data)
+}))
+const promise2 = new Promise((resolve,reject)=>{
+    reject('fail');
+})pro
+
+// 失败的传递
+promise2.then().then().then(null,(err=>{
+    console.log(err)
+}))
+then(onFulfilled, onRejected) {
+  onFulfilled = typeof onFulfilled ==='function' ? onFulfilled : v => v
+  onRejected = typeof onRejected === 'function'
+? onRejected : reason => { throw reason }
+}
+```
+
+#### 2.6 测试 Promise
+
+默认测试的时候会调用此方法 会检测这个方法返回的对象是否符合规范，这个对象上需要有 promise 实例及 resolve 和 reject 方法
+
+npm install promises-aplus-tests -g # 测试包
+promises-aplus-tests <filename>
+
+```js
+
+Promise.deferred = function () {
+    let dfd = {}
+    dfd.promise = new Promise((resolve, reject)
+=> {
+        dfd.resolve = resolve;
+        dfd.reject = reject;
+    })
+    return dfd;
+}
+```
+
+#### 2.7 resolve 问题解决
+
+```js
+const promise = new Promise((resolve, reject) => {
+  // 在ECMAScript中
+  // 我们在excutor中resolve一个promise会进行递归解析;
+  resolve(
+    new Promise((resolve, reject) => {
+      setTimeout(() => {
+        resolve("ok");
+      }, 1000);
+    })
+  );
+}).then((data) => {
+  console.log(data); // ok
+});
+
+const resolve = (value) => {
+  // 如果值是Promise，则需要进行递归解析
+  if (value instanceof Promise) {
+    return value.then(resolve, reject);
+  }
+  if (this.status === PENDING) {
+    this.status = FULFILLED;
+    this.value = value;
+    this.onResolvedCallbacks.forEach((fn) => fn());
+  }
+};
 ```

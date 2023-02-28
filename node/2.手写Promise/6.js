@@ -20,11 +20,36 @@ promise2.then(
 ); */
 
 // 问题2
-let promise = {};
+/* let promise = {};
 Object.defineProperty(promise, "then", {
   get() {
     throw new Error("报错");
   },
 });
-promise.then;
+promise.then; */
 // promise.then 可能出错了
+
+// 问题3：
+
+let otherPromise = {
+  then(onFulfilled, onRejected) {
+    throw new Error(onFulfilled());
+    onFulfilled();
+    onRejected();
+  },
+};
+
+let p = new Promise((resolve) => {
+  resolve();
+});
+let p2 = p.then(() => {
+  return otherPromise;
+});
+p2.then(
+  (y) => {
+    console.log("s", y);
+  },
+  (r) => {
+    console.log("f", r);
+  }
+);
