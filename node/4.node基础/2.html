@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <button id="button">button</button>
+    <script>
+      // document.body.style.background = "red";
+      // console.log(1);
+      // setTimeout(() => {
+      //   console.log(2); // 页面渲染只有达到16.6ms 才会渲染，浏览器有合并机制
+      //   document.body.style.background = "yellow";
+      // });
+      // console.log(3);
+      // 1 3 2
+
+      // 我们的逻辑希望是异步的，但是不希望多次渲染，可以放到微任务里面，此时可以采用Promise.then
+      // 想让触发浏览的渲染 setTimeout(()=>{})  transiton, 触发浏览器的回流、重绘
+
+      // 不是绑定事件就放到队列中，而是点的时候，时间到了，ajax成功了才放
+      button.addEventListener("click", () => {
+        console.log("listener1");
+        Promise.resolve().then(() => console.log("micro task1"));
+      });
+      button.addEventListener("click", () => {
+        console.log("listener2");
+        Promise.resolve().then(() => console.log("micro task2"));
+      });
+      //  1. 默认的输出  和点击后的输出
+      button.click(); //立即执行，直接调用 click1() click2() 不会产生对应的宏任务，是在主线程中执行的
+      /*  打印结果：
+        listener1
+        listener2
+        micro task1
+        micro task2
+       */
+
+      // 2.点击的话： 默认会产生两个宏任务，依次执行
+      /*  打印结果：
+        listener1
+        micro task1
+        listener2
+        micro task2
+       */
+
+      Promise.resolve().then(() => {
+        console.log("Promise1");
+        setTimeout(() => {
+          console.log("setTimeout2");
+        }, 0);
+      });
+      setTimeout(() => {
+        console.log("setTimeout1");
+        Promise.resolve().then(() => {
+          console.log("Promise2");
+        });
+      }, 0);
+      /* 
+      打印结果：
+        Promise1
+        setTimeout1
+        Promise2
+
+      1.开始执行，宏任务微任务依次放到队列中
+        宏任务：[s1]
+        微任务：[p1]
+      2.清空微任务p1，打印Promise1,里面的s2放入宏任务中
+        宏任务：[s1,s2]
+        微任务：[]
+      3.取出并执行宏任务 s1,打印setTimeout1，微任务为p2,执行并清空微任务，打印：Promise2
+        宏任务：[s2]
+        微任务：[p2]->[]
+      4.取出并执行宏任务 s2,打印setTimeout2
+        宏任务：[]
+        微任务：[]
+       */
+    </script>
+  </body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="abc"></div>
+    <script>
+      // 异步， 当 dom 发生变化后调用回调，应用场景：滚动刷新
+      let observer = new MutationObserver(() => {
+        // 回调异步的
+        console.log("abc:", abc.children.length);
+      });
+      observer.observe(abc, {
+        childList: true, // 监控儿子列表
+        // characterData: true, //监控文本变更
+      });
+
+      for (let i = 0; i < 20; i++) {
+        abc.appendChild(document.createElement("p"));
+      }
+      for (let i = 0; i < 20; i++) {
+        abc.appendChild(document.createElement("p"));
+      }
+
+      // 消息通道
+      const channel = new MessageChannel();
+      // channel: {port1:{onmessage:...,postMessage:...}, port2:{onmessage:...,postMessage:...}}
+      channel.port1.onmessage = function (e) {
+        // nextTick
+        console.log(e.data);
+      };
+      console.log(1);
+      channel.port2.postMessage("abc");
+      console.log(2);
+
+      /* 打印结果
+        1
+        2
+        abc:40
+        abc 
+      */
+    </script>
+  </body>
+</html>
