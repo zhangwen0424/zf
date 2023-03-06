@@ -288,8 +288,51 @@ Node.js 是一个 JavaScript 运行环境，它是基于 Chrome's V8 引擎构�
 - 方便维护，高内聚低耦合，解决变量冲突问题，隔离
 - Node 中实现模块采用函数来进行模块划分的。
 
+- 组件化和模块化区别：组件化是基于 UI 的封装，模块化是业务逻辑的封装
+
 #### 6. commonjs 规范
 
 - 每个 js 文件都是一个模块
 - 每个模块想去引用别人的模块，需要采用 require 语法 import
 - 每个模块想被别人使用需要采用 module.exports 进行导出
+
+```js
+function Module(id) {
+  this.id = id;
+  this.exports = {};
+}
+Module._extensions = {
+  ".js"(module) {
+    const content = fs.readFileSync(module.id, "utf8");
+    let wrapperFn = vm.compileFunction(content, [
+      "exports",
+      "require",
+      "module",
+      "__filename",
+      "__dirname",
+    ]);
+    let exports = this.exports;
+    let thisValue = exports;
+    let require = req;
+    let filename = module.id;
+    let dirname = path.dirname(filename);
+    Reflect.apply(wrapperFn, thisValue, [
+      exports,
+      require,
+      module,
+      filename,
+      dirname,
+    ]);
+  },
+};
+Module.prototype.load = function (filename) {
+  let ext = path.extname(filename);
+  Module._extensions[ext](this);
+};
+function req(id) {
+  let absPath = Module._resolveFilename(id);
+  const module = new Module(absPath);
+  module.load(absPath);
+  return module.exports;
+}
+```
