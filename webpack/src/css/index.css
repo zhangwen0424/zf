@@ -1,0 +1,6 @@
+@import "bg.css";
+@import "color.less";
+
+body {
+  background-image: url(../images/avatar_F.jpg);
+}
