@@ -3,4 +3,10 @@
 
 body {
   background-image: url(../images/avatar_F.jpg);
+  background-repeat: no-repeat;
+}
+
+#root {
+  transform: rotate(7deg);
+  background-color: black;
 }
