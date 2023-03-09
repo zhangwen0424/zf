@@ -311,5 +311,32 @@ module.rules = {
       },
 ```
 
-### eslint 代码检查
+### eslint 代码检查 eslint-webpack-plugin
 
+webpack.config.js
+
+```js
+const EslintPLugin = require("eslint-webpack-plugin");
+{
+  plugins: [
+    new HtmlWebpackPlugin({
+      template: "./src/index.html", // 生成 html的模版
+      filename: "index.html", //打包后的文件名
+    }),
+    new MiniCssExtractPlugin(),
+    new EslintPLugin({
+      extensions: [".js", "ts"],
+    }),
+  ];
+}
+```
+
+.eslintrc
+
+```js
+{
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "extends": ["plugin:@typescript-eslint/recommended"]
+}
+```
