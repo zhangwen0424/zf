@@ -340,3 +340,111 @@ const EslintPLugin = require("eslint-webpack-plugin");
   "extends": ["plugin:@typescript-eslint/recommended"]
 }
 ```
+
+### 图片处理
+
+```js
+module.rules = [
+  // {
+  //   test: /\.txt$/,
+  //   type: "asset/source", // 导出资产的源代码，使用后txt文本不报错
+  // },
+  /* {
+        test: /\.(png)$/,
+        type: "asset/resource", // 生成单独的文件并导出 URL，png: file:///Users/mornki/project/zf/webpack/dist/cc97333c6f95cd9423c3.png
+      },
+      {
+        test: /\.(jpg)$/,
+        type: "asset/inline", // base64
+      },
+      {
+        test: /\.png$/,
+        type: "asset", //会输出文件和base64之间自动选择
+        parser: {
+          //如果图片大小小于某个阈值，则base64,大于某个阈值输出单独文件
+          dataUrlCondition: {
+            maxSize: 1024 * 32,
+          },
+        },
+      }, */
+];
+```
+
+响应式图片
+
+```js
+module.rules = [
+  {
+    test: /\.png$/,
+    use: [
+      {
+        loader: "responsive-loader",
+        options: {
+          sizes: [300, 600, 1024],
+          adapter: require("responsive-loader/sharp"),
+        },
+      },
+    ],
+  },
+];
+```
+
+不是所有图片都需要响应式，通过查询字符串匹配图片加载 loader
+
+- 配置 resourceQuery 识别关键字就行响应式图片的生成，`resourceQuery: /responsize?/`，配图片地址`import responsiveImage from "./images/bgg.jpg?responsize";`，裁剪尺寸配到 options 中`sizes: [300, 600, 1024],`
+
+- 配置 resourceQuery`resourceQuery: /sizes?/`，搭配图片地址`import responsiveImage from "./images/bgg.jpg?sizes[]=300,sizes[]=600,sizes[]=1024"`，裁剪尺寸配到 options 无需配置 sizes 会自动识别
+
+- 需要注意图片所能裁剪的最大尺寸是图片的尺寸，案例图片要找个大的，否则只能裁剪成 sizes 中<=图片的尺寸
+
+index.js
+
+```js
+// 响应式图片，图片所能裁剪的最大尺寸是图片的尺寸，案例图片要找个大的
+// import responsiveImage from "./images/bgg.jpg?sizes[]=300,sizes[]=600,sizes[]=1024";
+import responsiveImage from "./images/bgg.jpg?responsize";
+console.log(responsiveImage);
+let img = new Image();
+img.srcset = responsiveImage.srcSet;
+img.sizes = `(min-width: 1024px) 1024px, 100vw`;
+document.body.appendChild(img);
+
+let facebook = new Image();
+facebook.src = require("./images/icons/facebook.png");
+document.body.appendChild(facebook);
+
+let github = new Image();
+github.src = require("./images/icons/github.png");
+document.body.appendChild(github);
+
+let twitter = new Image();
+twitter.src = require("./images/icons/twitter.png");
+document.body.appendChild(twitter);
+```
+
+```js
+module.rules = [
+  {
+    test: /\.(jpe?g|png)$/i,
+    //oneOf是一个优化选项，用于提高打包的速度
+    oneOf: [
+      {
+        //resourceQuery是一个用于匹配请求资源的URL中查询字符中
+        resourceQuery: /responsize?/,
+        use: [
+          {
+            loader: "responsive-loader",
+            options: {
+              sizes: [300, 600, 1024],
+              adapter: require("responsive-loader/sharp"),
+            },
+          },
+        ],
+      },
+      {
+        type: "asset/resource",
+      },
+    ],
+  },
+];
+```
