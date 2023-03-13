@@ -13,7 +13,9 @@
 
    vscode 插件：rm-js-comment（移除多余注释）
 
-## webpack.config.js 名字定死
+## webpack.config.js 基本配置
+
+名字定死
 
 module -> 一个文件
 chunk -> 一条有相关依赖模块关系的路径，是过程中的代码块
@@ -446,5 +448,177 @@ module.rules = [
       },
     ],
   },
+];
+```
+
+### entry 的选项
+
+可为对象，数组，字符串
+
+````js
+entry: {
+    // vendor: "./src/vendor.js",
+    // main: {
+    //   import: "./src/index.js", //指的是指定入口文件
+    //   dependOn: "vendor", //声明该入口的前置依赖，这样生成的main.js会小一点，dependOn后生称的代码会require 外部依赖
+    // },
+
+    // 设置该入口的runtime chunk,如果这个值不设置，那么运行时代码(require方法)会打包到bundle中
+    // 如果 runtime 的名字一样，两者的 runtime 会打包到一个 runtime.js中，不一样则分开打包
+    // 打包出来的代码都是 commonjs，但是浏览器不认识，需要自己实现一个 commonjs规范（require方法）
+    entry1: {
+      import: "./src/entry1.js",
+      // runtime: "runtime",
+    },
+    entry2: {
+      import: "./src/entry2.js",
+      // runtime: "runtime",
+    },
+  },```
+````
+
+### proxy 设置
+
+```js
+devServer: {
+    host: "localhost", //主机名
+    port: 9000, //访问端口号
+    // open: true, //构建结束后自动打开浏览器预览项目
+    compress: true, //启动gzip压缩
+    hot: true, //启动支持模块热替换，这个内容我们后面会手写实现
+    watchFiles: [
+      //监听这些文件的变化，如果这些文件变化了，可以重新编译
+      //如果不配置watchFiles就是监听所有的文件
+      "src/**/*.js",
+    ],
+    //不管访问哪个路径，都会把请求重定向到index.html，交给前端路由来进行处理
+    historyApiFallback: true,
+    // proxy: {
+    //   // "/api": "http://localhost:3000",
+    //   "/api": {
+    //     target: "http://localhost:3000",
+    //     pathRewrite: { "^/api": "" },
+    //   },
+    // },
+    // 没有后台服务器，自己写返回数据
+    onBeforeSetupMiddleware({ app }) {
+      app.get("/api/user", (req, res) => {
+        res.json([{ name: "bor", id: 1 }]);
+      });
+    },
+  },
+```
+
+```js
+// webpack 内置 express
+const express = require("express");
+const app = new express();
+
+// app.get("/api/user", function (req, res) {
+app.get("/user", function (req, res) {
+  res.json({ name: "zw", age: 18 });
+});
+
+app.listen(3000, () => console.log("3000"));
+```
+
+启动服务器: node api.js
+启动 wepback_dev_server: npm run dev
+
+package.json
+
+```json
+"scripts": {
+    "build": "cross-env NODE_ENV=production webpack",
+    "dev": "cross-env NODE_ENV=development webpack serve"
+  }
+```
+
+## npm 发布
+
+- webpack-node-externals 排查 不需要打包的第三方模块
+- webpack-merge 合并 webpack 配置
+
+### 环境配置
+
+cross-env 可以设置 node 环境中的 env
+--mode 可以决定 模块源代码中的 process.env.NODE_ENV 的值
+DefinePlugin 设置模块中的值
+
+```json
+  "scripts": {
+    "build": "webpack",
+    "build:prod": "cross-env NODE_ENV=production webpack",
+    "build:dev": "cross-env NODE_ENV=development webpack"
+  }
+```
+
+```js
+const path = require("path");
+const { merge } = require("webpack-merge");
+const miniCssExtractPlugin = require("mini-css-extract-plugin");
+const nodeExternals = require("webpack-node-externals");
+const webpack = require("webpack");
+console.log("process.env.NODE_ENV-----", process.env.NODE_ENV);
+const baseConfig = {
+  mode: process.env.NODE_ENV, //"development",
+  devtool: "source-map",
+  entry: "./src/index.js",
+  externals: [
+    // {
+    //   jquery: {
+    //     umd: "jquery",
+    //     commonjs: "jquery",
+    //     commonjs2: "jquery",
+    //     root: "$",
+    //   },
+    // },
+    nodeExternals(), //排除所有的第三方模块，就是把node_modules里的模块全部设置为外部模块
+  ],
+  output: {
+    // library: "math1", // module.exports.math1 = exports
+    // libraryExport: "add", // module.exports = exports.add
+    clean: true,
+  },
+  module: {
+    rules: [
+      {
+        test: /\.js$/,
+        use: [{ loader: "babel-loader" }],
+      },
+      {
+        test: /\.css$/,
+        use: [miniCssExtractPlugin.loader, "css-loader"],
+      },
+    ],
+  },
+  plugins: [
+    new miniCssExtractPlugin(),
+    // 替换模块中的值
+    new webpack.DefinePlugin({
+      "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV),
+    }),
+  ],
+};
+
+module.exports = [
+  merge(baseConfig, {
+    output: {
+      filename: "[name]-window.js",
+      libraryTarget: "window",
+    },
+  }),
+  merge(baseConfig, {
+    output: {
+      filename: "[name]-commonjs.js",
+      libraryTarget: "commonjs2",
+    },
+  }),
+  merge(baseConfig, {
+    output: {
+      filename: "[name]-umd.js",
+      libraryTarget: "umd",
+    },
+  }),
 ];
 ```
