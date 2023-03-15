@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "chalk": "^5.2.0",
+    "commander": "^10.0.0"
+  },
+  "name": "global",
+  "version": "1.0.0",
+  "main": "1.global.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
