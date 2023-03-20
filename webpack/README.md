@@ -770,3 +770,12 @@ module.exports = baseConfig;
   }),
 ]; */
 ```
+
+## sourcemap
+
+- sourcemap 生成 sourcemap 文件
+- eval 把模块代码通过 eval 进行包裹
+- cheap 1.不包含列信息，2 不包含模块的 loader 的 map
+- inline 把 sourcemap 信息变成 base64 字符串并内联到 main.js 中，不会生成单独的 sourcemap 文件
+
+启动一个服务：
