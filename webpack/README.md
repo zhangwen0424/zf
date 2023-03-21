@@ -777,5 +777,93 @@ module.exports = baseConfig;
 - eval 把模块代码通过 eval 进行包裹
 - cheap 1.不包含列信息，2 不包含模块的 loader 的 map
 - inline 把 sourcemap 信息变成 base64 字符串并内联到 main.js 中，不会生成单独的 sourcemap 文件
+- hidden 隐藏不上传，生成 map 文件但是在 main.js 中不关联 map 文件
 
-启动一个服务：
+开发环境比较推荐配置：devtool:cheap-module-eval-source-map
+
+- source-map 生成映射文件
+- cheap 不包含列信息
+- module 包含有 loader 模块之间对应的 sourceMap
+- eval 因为在开发环境我要频繁修改代码，频繁重新构建，所以需要缓存提升重新构建的速度
+
+### 如何调试测试环境的代码
+
+- 把代码发布到了测试环境，不希望测试人员能看到你的源文件
+- 但是你开发需要
+- 你可以把 map 文件放在你的本地。每次在本地启动就好了
+
+```js
+// 1.evtool:false
+// 2.通过 webpack.SourceMapDevToolPlugin 生成 sourcemap 文件
+// 3.通过FileManagerWebpackPlugin插件讲生成的 map文件移到新的目标文件夹中，并删除 dist目录的 map 文件
+// 4.在目标文件夹中起一个服务，可以在线上中调试 soucemap文件
+//   启动一个服务: http-server -c -1 -p 8081 (-c 指定缓存的时间 -1 是没有缓存)
+const path = require("path");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+const webpack = require("webpack");
+const FileManagerWebpackPlugin = require("filemanager-webpack-plugin");
+const baseConfig = {
+  mode: "development",
+  // devtool: "hidden-source-map",
+  devtool: false,
+  entry: "./src/index.js",
+  output: {
+    clean: true,
+  },
+  module: {
+    rules: [
+      {
+        test: /\.js$/,
+        use: [
+          {
+            loader: "babel-loader",
+            options: {
+              presets: ["@babel/preset-env"],
+            },
+          },
+        ],
+      },
+    ],
+  },
+  plugins: [
+    new HtmlWebpackPlugin({
+      template: "./src/index.html",
+    }),
+    //自己生成sourcemap
+    //SourceMapDevToolPlugin是一个内置插件，可以更加精细的控制sourcemap的生成
+    new webpack.SourceMapDevToolPlugin({
+      filename: "[file].map",
+      // 是否向打包后的文件中追加 .map 地址链接
+      // append: "\n//# sourceMappingURL=http://127.0.0.1:8081/[url]",
+      // 生产环境可以设置为 false，不追加 .map的地址
+      append: false,
+    }),
+    // 文件读写插件
+    new FileManagerWebpackPlugin({
+      events: {
+        onEnd: {
+          // 编译结束后走里面的代码
+          copy: [
+            // 将目标文件 copy 到指定文件夹
+            {
+              source: "./dist/*.map",
+              destination: path.resolve("./sourcemaps"),
+            },
+          ],
+          // copy完成后删除原来生成的 .map 文件
+          delete: ["./dist/*.map"],
+        },
+      },
+    }),
+  ],
+};
+module.exports = baseConfig;
+```
+
+### 如何调生产环境的代码
+
+不生成 sourcemap，如何调试:  
+1.手动添加 sourcemap 文件地址，浏览器调试工具右键添加源关联  
+2.自动添加 sourcemap,通过插件 fiddler
+
+devtool:hidden-source-map

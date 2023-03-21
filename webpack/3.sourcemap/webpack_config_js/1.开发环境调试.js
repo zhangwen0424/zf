@@ -34,8 +34,8 @@ const baseConfig = {
     new webpack.SourceMapDevToolPlugin({
       filename: "[file].map",
       // 是否向打包后的文件中追加 .map 地址链接
-      // append: "\n//# sourceMappingURL=http://127.0.0.1:8081/[url]",
-      append: false,
+      append: "\n//# sourceMappingURL=http://127.0.0.1:8081/[url]",
+      // append: false,
     }),
     // 文件读写插件
     new FileManagerWebpackPlugin({
