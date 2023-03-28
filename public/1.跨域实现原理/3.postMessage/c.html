@@ -7,17 +7,11 @@
     <title>Document</title>
   </head>
   <body>
-    <iframe
-      src="http://b.zf1.cn:3000/b.html"
-      frameborder="0"
-      id="frame"
-      onload="load()"
-    ></iframe>
     <script>
-      document.domain = "zf1.cn";
-      function load() {
-        console.log(frame.contentWindow.a);
-      }
+      window.onmessage = function (e) {
+        console.log("c接收到数据：", e.data, e);
+        e.source.postMessage("c", e.origin);
+      };
     </script>
   </body>
 </html>

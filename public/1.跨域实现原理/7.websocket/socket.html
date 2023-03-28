@@ -7,17 +7,15 @@
     <title>Document</title>
   </head>
   <body>
-    <iframe
-      src="http://b.zf1.cn:3000/b.html"
-      frameborder="0"
-      id="frame"
-      onload="load()"
-    ></iframe>
     <script>
-      document.domain = "zf1.cn";
-      function load() {
-        console.log(frame.contentWindow.a);
-      }
+      // 高级api 不兼容 socket.io(一般使用它)
+      let socket = new WebSocket("ws://localhost:3000");
+      socket.onopen = function () {
+        socket.send("html页面发送的消息");
+      };
+      socket.onmessage = function (e) {
+        console.log("e.data", e.data);
+      };
     </script>
   </body>
 </html>

@@ -10,7 +10,7 @@
     <script>
       window.onmessage = function (e) {
         console.log("b接收到数据：", e.data, e);
-        e.source.postMessage("a", e.origin);
+        e.source.postMessage("b", e.origin);
       };
     </script>
   </body>

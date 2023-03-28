@@ -406,10 +406,220 @@ c.html
 </html>
 ```
 
-### http-proxy
+### document.domain
 
-### nginx
+通过 window.domain 讲页面指向同一域名
+
+a.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Document</title>
+  </head>
+  <body>
+    <!-- 域名 一级域名二级域名 -->
+    <!-- www.baidu.com -->
+    <!-- viode.baidu.com -->
+    <!-- a是通过 http://a.zf1.cn:3000/a.html -->
+    helloa
+    <iframe
+      src="http://b.zf1.cn:3000/b.html"
+      frameborder="0"
+      onload="load()"
+      id="frame"
+    ></iframe>
+    <script>
+      document.domain = "zf1.cn";
+      function load() {
+        console.log(frame.contentWindow.a);
+      }
+    </script>
+  </body>
+</html>
+```
+
+b.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Document</title>
+  </head>
+  <body>
+    hellob
+    <script>
+      document.domain = "zf1.cn";
+      var a = 100;
+    </script>
+  </body>
+</html>
+```
 
 ### websocket
 
-### document.domain
+server.js
+
+```js
+let express = require("express");
+let app = express();
+let WebSocket = require("ws");
+let wss = new WebSocket.Server({ port: 3000 });
+wss.on("connection", function (ws) {
+  ws.on("message", function (data) {
+    console.log("data:", String(data));
+    ws.send("server传输的数据！");
+  });
+});
+```
+
+socket.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script>
+      // 高级api 不兼容 socket.io(一般使用它)
+      let socket = new WebSocket("ws://localhost:3000");
+      socket.onopen = function () {
+        socket.send("html页面发送的消息");
+      };
+      socket.onmessage = function (e) {
+        console.log("e.data", e.data);
+      };
+    </script>
+  </body>
+</html>
+```
+
+### nginx
+
+- brew search nginx 查找 nginx 是否安装
+- brew install nginx 安装 nginx
+- brew info nginx 查找 nginx 安装目录
+- nginx -s reload reload 命令会重新加载配置文件，而 nginx 服务不会中断，服务启动，文件即加载成功
+  访问 nginx: http://localhost:8080/
+- sudo nginx -s stop 关闭 nginx
+- sudo nginx -t 查看 nginx 的配置路径, 修改 nginx.conf，添加跨域访问
+
+```conf
+    location ~.*\.json {
+        root json;
+        add_header "Access-Control-Allow-Origin" "*";
+    }
+```
+
+server.js
+
+```js
+let express = require("express");
+let app = express();
+app.use(express.static(__dirname));
+app.listen(3000);
+```
+
+index.html
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script>
+      let xhr = new XMLHttpRequest();
+      xhr.open("get", "http://localhost:8080/test.json", true);
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          if ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 304) {
+            console.log(xhr.response);
+            // console.log(xhr.getResponseHeader("name"));
+          }
+        }
+      };
+      xhr.send();
+    </script>
+  </body>
+</html>
+```
+
+```conf
+
+#user  nobody;
+worker_processes  1;
+
+#error_log  logs/error.log;
+#error_log  logs/error.log  notice;
+#error_log  logs/error.log  info;
+
+#pid        logs/nginx.pid;
+
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    #keepalive_timeout  0;
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    server {
+        listen       8080;
+        server_name  localhost;
+
+        #charset koi8-r;
+
+        #access_log  logs/host.access.log  main;
+
+        location / {
+            root   html;
+            index  index.html index.htm;
+        }
+
+        location ~.*\.json {
+            root json;
+            add_header "Access-Control-Allow-Origin" "*";
+        }
+
+        #error_page  404              /404.html;
+
+        # redirect server error pages to the static page /50x.html
+        #
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   html;
+        }
+    }
+    include servers/*;
+}
+```
+
+### http-proxy
