@@ -1,11 +1,21 @@
 <template>
   计数器： {{ count }} {{ $store.state.count }}
   <hr />
-  <!-- double:{{ double }} {{ $store.getters.double }} -->
+  double:{{ double }} {{ $store.getters.double }}
 
   <!-- 开启严格模式会报错 -->
   <button @click="$store.state.count++">错误修改</button>
   &nbsp;
+
+  <!-- 同步修改 -->
+  <button @click="add">同步修改</button>
+  &nbsp;
+  <button @click="asyncAdd">异步修改</button>
+
+  <hr />
+  a模块：{{ aCount }} b模块：{{ bCount }}
+  <button @click="$store.commit('aCount/add', 1)">改 a</button>
+  <button @click="$store.commit('bCount/add', 1)">改 b</button>
 </template>
 
 <script>
@@ -26,10 +36,10 @@ export default {
       store.dispatch("asyncAdd", 1);
     }
     return {
-      // count: computed(() => store.state.count),
-      // double: computed(() => store.state.double),
-      // add,
-      // asyncAdd,
+      count: computed(() => store.state.count),
+      double: computed(() => store.state.double),
+      add,
+      asyncAdd,
     };
   },
 };

@@ -26,7 +26,29 @@ export default createStore({
     },
   },
   // 子模块 实现逻辑的拆分
-  modules: {},
+  modules: {
+    aCount: {
+      namespaced: true,
+      state: { count: 0 },
+      mutations: {
+        add(state, payload) {
+          state.count += payload;
+        },
+      },
+      // modules: {
+      //   cCount: {},
+      // },
+    },
+    bCount: {
+      state: { count: 0 },
+      namespaced: true,
+      mutations: {
+        add(state, payload) {
+          state.count += payload;
+        },
+      },
+    },
+  },
 });
 
 // 严格模式
