@@ -1,4 +1,5 @@
 import { createStore } from "@/vuex";
+// import { createStore } from "vuex";
 
 export default createStore({
   // 组件中的data
@@ -35,9 +36,17 @@ export default createStore({
           state.count += payload;
         },
       },
-      // modules: {
-      //   cCount: {},
-      // },
+      modules: {
+        cCount: {
+          state: { count: 0 },
+          namespaced: true,
+          mutations: {
+            add(state, payload) {
+              state.count += payload;
+            },
+          },
+        },
+      },
     },
     bCount: {
       state: { count: 0 },

@@ -38,7 +38,7 @@ See [Configuration Reference](https://cli.vuejs.org/config/).
 ## 使用
 
 vuex 原理就是 借助 provide 和 inject 实现组件间传递数据
-createStore 注入数据，useStore 取数据，两者返回的是一个实例对象
+createStore 初始化 vuex 实例，createApp(App).use(store) 注入数据，useStore() 取数据，两者返回的是一个实例对象
 
 ### 注册 vuex
 
