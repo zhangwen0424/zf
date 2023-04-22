@@ -9,6 +9,11 @@ export default class Store {
     // 组装 modules 数据
     store._modules = new ModuleCollection(options);
 
+    // {add:[fn,fn,fn]}  发布订阅模式
+    this._wrappedGetters = Object.create(null);
+    this._mutations = Object.create(null);
+    this._actions = Object.create(null);
+
     // 定义状态，把状态定义到 store.state.aCount.cCount.count;
     const state = store._modules.root.state; // 根状态
     installModule(store, state, [], store._modules.root);
@@ -36,6 +41,17 @@ function installModule(store, rootState, path, module) {
   module.forEachChild((child, key) => {
     installModule(store, rootState, path.concat(key), child);
   });
+
+  // getters  module._raw.getters
+  module.forEachGetter((getter, key) => {
+    store._wrappedGetters[key] = () => {
+      return getter(store.state, path);
+    };
+  });
+  // mutation   {add:[mutation]}
+  module.forEachMutation((mutation, key) => {
+    // const entry = store._mutatons[key] =
+  });
 }
 
 class Module {
@@ -53,6 +69,21 @@ class Module {
   }
   forEachChild(fn) {
     forEachValue(this._children, fn);
+  }
+  forEachGetter(fn) {
+    if (this._raw.getters) {
+      forEachValue(this._raw.getters, fn);
+    }
+  }
+  forEachMutation(fn) {
+    if (this._raw.mutations) {
+      forEachValue(this._raw.mutations, fn);
+    }
+  }
+  forEachAction(fn) {
+    if (this._raw.actions) {
+      forEachValue(this._raw.actions, fn);
+    }
   }
 }
 
