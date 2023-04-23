@@ -13,9 +13,10 @@
   <button @click="asyncAdd">异步修改</button>
 
   <hr />
-  a模块：{{ aCount }} b模块：{{ bCount }}
-  <button @click="$store.commit('aCount/add', 1)">改 a</button>
-  <button @click="$store.commit('bCount/add', 1)">改 b</button>
+  a模块：{{ aCount }} &nbsp;b模块：{{ bCount }} &nbsp;c模块：{{ cCount }}
+  <button @click="$store.commit('aCount/add', 1)">改 a</button>&nbsp;
+  <button @click="$store.commit('bCount/add', 1)">改 b</button>&nbsp;
+  <button @click="$store.commit('aCount/cCount/add', 1)">改 c</button>&nbsp;
 </template>
 
 <script>
@@ -33,11 +34,16 @@ export default {
       store.commit("add", 1);
     }
     function asyncAdd() {
-      store.dispatch("asyncAdd", 1);
+      store.dispatch("asyncAdd", 1).then((d) => {
+        console.log("ok", d);
+      });
     }
     return {
       count: computed(() => store.state.count),
       double: computed(() => store.state.double),
+      aCount: computed(() => store.state.aCount.count),
+      bCount: computed(() => store.state.bCount.count),
+      cCount: computed(() => store.state.aCount.cCount.count),
       add,
       asyncAdd,
     };
