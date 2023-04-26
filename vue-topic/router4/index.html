@@ -6,11 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
   </head>
+
   <body>
+    <button onclick="window.history.pushState('/')">首页</button>
+    <button onclick="window.history.pushState('/about')">关于我</button>
+    <button onclick="window.history.replaceState('/xxxx')">替换</button>
+    <hr />
+    <!-- 自己实现的 -->
     <button onclick="routerHistory.push('/')">首页</button>
     <button onclick="routerHistory.push('/about')">关于我</button>
     <button onclick="routerHistory.replace('/xxxx')">替换</button>
-
     <script>
       // 前端路由的实现原理：两种模式 一种是hash模式 一种history模式 h5api
       // window.location.hash = '/' history.pushState(state,null,url) history.replaceState()
@@ -98,9 +103,25 @@
             data
           );
         }
+
+        function replace(to, data) {
+          const state = Object.assign(
+            {},
+            buildState(
+              historyState.vlaue.back,
+              to,
+              historyState.value.forward,
+              true
+            )
+          );
+          changeLocation(to, state, true);
+          currentLocation.value = to; // 替换后需要将路径变为现在的路径
+        }
         return {
           loaction: currentLocation,
           state: historyState,
+          push,
+          replace,
         };
       }
 
