@@ -42,7 +42,7 @@ function createRouter(options) {
 
   // 导航钩子
   const beforeGuards = useCallback();
-  const beforeResvoleGuards = useCallback();
+  const beforeResolveGuards = useCallback();
   const afterGuards = useCallback();
 
   // 解析路径，to="/"   to={path:'/'}
@@ -79,9 +79,47 @@ function createRouter(options) {
     markAsReady();
   }
 
+  // 抽离组件
+  function extractChangeRecords(to, from) {
+    const leavingRecords = [];
+    const updatingRecords = [];
+    const enteringRecords = [];
+    const len = Math.max(to.matched.length, from.matched.length); // 去和来的组件中最长的
+
+    for (let i = 0; i < len; i++) {
+      // 循环来的
+      const recordFrom = from.matched[i];
+      if (recordFrom) {
+        // 去的和来的都有 那么就是要更新
+        if (to.matched.find((record) => record.path == recordFrom.path)) {
+          updatingRecords.push(recordFrom);
+        } else {
+          // 来的有，去的没有，就是离开
+          leavingRecords.push(recordFrom);
+        }
+      }
+      // 循环去的
+      const recordTo = to.matched[i];
+      if (recordTo) {
+        // 去的有，来的也有，就是更新
+        if (!from.matched.find((record) => record.path == recordTo.path)) {
+          enteringRecords.push(recordTo);
+        }
+      }
+    }
+
+    return [leavingRecords, updatingRecords, enteringRecords];
+  }
+
   // 路由守卫钩子
   async function navigate(to, from) {
     // 在做导航的时候 我要知道哪个组件是进入，哪个组件是离开的，还要知道哪个组件是更新的
+
+    const [leavingRecords, updatingRecords, enteringRecords] =
+      extractChangeRecords(to, from); // 抽离离开、更新、进入组件
+
+    // 我离开的时候 需要从后往前   /home/a  -> about
+    debugger;
   }
 
   // 通过路径匹配到对应的记录，更新currentRoute，调用导航钩子
@@ -109,7 +147,7 @@ function createRouter(options) {
     push,
     beforeEach: beforeGuards.add, // 可以注册多个 所以是一个发布订阅模式
     afterEach: afterGuards.add, // 导航守卫钩子在切换路由调用
-    beforeGuards: beforeResvoleGuards.add,
+    beforeResolve: beforeResolveGuards.add,
     install(app) {
       // 路由的核心就是 页面切换 ，重新渲染
       const router = this;

@@ -35,7 +35,7 @@ const router = createRouter({
 });
 
 // 路由前置守卫
-router.beforEach((to, from, next) => {
+router.beforeEach((to, from, next) => {
   console.log("beforEach", to);
 });
 
