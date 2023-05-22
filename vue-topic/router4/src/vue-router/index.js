@@ -111,6 +111,34 @@ function createRouter(options) {
     return [leavingRecords, updatingRecords, enteringRecords];
   }
 
+  function guardToPromise(guard, to, from, record) {
+    return () =>
+      new Promise((resolve, reject) => {
+        const next = () => resolve();
+        let guardReturn = guard.call(record, to, from, next);
+        return Promise.resolve(guardReturn).then(next);
+      });
+  }
+  // 执行组件钩子函数  matched:组件集合，guardType:钩子类型
+  function extractComponentsGuards(matched, guradType, to, from) {
+    const guards = [];
+    for (const record of matched) {
+      let rawComponent = record.components.default;
+      const guard = rawComponent[guradType];
+      // 将组件钩子函数组装成 promise 放到一个数组中，方便后续按照顺序执行
+      guard && guards.push(guardToPromise(guard, to, from, record));
+    }
+    return guards;
+  }
+
+  // promise的组合函数
+  function runGuardQueue(guards) {
+    return guards.reduce(
+      (promise, guard) => promise.then(() => guard),
+      Promise.resolve()
+    );
+  }
+
   // 路由守卫钩子
   async function navigate(to, from) {
     // 在做导航的时候 我要知道哪个组件是进入，哪个组件是离开的，还要知道哪个组件是更新的
@@ -118,8 +146,19 @@ function createRouter(options) {
     const [leavingRecords, updatingRecords, enteringRecords] =
       extractChangeRecords(to, from); // 抽离离开、更新、进入组件
 
-    // 我离开的时候 需要从后往前   /home/a  -> about
-    debugger;
+    // 循环调用组件的钩子
+
+    // 调用组件离开的钩子, 我离开的时候 需要从后往前   /home/a  -> about
+    let guards = extractComponentsGuards(
+      leavingRecords.reverse(),
+      "beforeRouteLeave",
+      to,
+      from
+    );
+
+    return runGuardQueue(guards).then(() => {
+      guards = [];
+    });
   }
 
   // 通过路径匹配到对应的记录，更新currentRoute，调用导航钩子
