@@ -73,7 +73,7 @@ function createRouter(options) {
       routerHistory.push(to.path); // 执行跳转
     }
     currentRoute.value = to; // 更新最新的路径
-    console.log("currentRoute:", currentRoute.value);
+    // console.log("currentRoute:", currentRoute.value);
 
     // 如果是初始化 我们还需要注入一个listen 去更新currentRoute的值，这样数据变化后可以重新渲染视图
     markAsReady();
@@ -134,7 +134,7 @@ function createRouter(options) {
   // promise的组合函数
   function runGuardQueue(guards) {
     return guards.reduce(
-      (promise, guard) => promise.then(() => guard),
+      (promise, guard) => promise.then(() => guard()),
       Promise.resolve()
     );
   }
@@ -147,6 +147,20 @@ function createRouter(options) {
       extractChangeRecords(to, from); // 抽离离开、更新、进入组件
 
     // 循环调用组件的钩子
+    /* 
+      1. 导航被触发。
+      2. 在失活的组件里调用beforeRouteLeave守卫。
+      3. 调用全局的beforeEach守卫。
+      4. 在重用的组件里调用 beforeRouteUpdate 守卫 (2.2+)。
+      5. 在路由配置里调用beforeEnter。
+      6. 解析异步路由组件。
+      7. 在被激活的组件里调用beforeRouteEnter。
+      8. 调用全局的beforeResolve守卫(2.5+)。
+      9. 导航被确认。
+      10. 调用全局的afterEach钩子。
+      11. 触发DOM更新。
+      12. 调用beforeRouteEnter守卫中传给next的回调函数，创建好的组件实例会作为回调函数的参数传入。
+     */
 
     // 调用组件离开的钩子, 我离开的时候 需要从后往前   /home/a  -> about
     let guards = extractComponentsGuards(
@@ -156,9 +170,50 @@ function createRouter(options) {
       from
     );
 
-    return runGuardQueue(guards).then(() => {
-      guards = [];
-    });
+    // 组件离开(beforeRouteLeave) =》 全局前置守卫(beforeEach) =》 组件更新(beforeRouteUpdate) =》
+    // 路由前置(beforeEnter) =》 组件进入(beforeRouteEnter) =》 全局解析(beforeResolve) =》 全局后置(afterEach)
+    return runGuardQueue(guards)
+      .then(() => {
+        guards = [];
+        for (const guard of beforeGuards.list()) {
+          guards.push(guardToPromise(guard, to, from, guard));
+        }
+        return runGuardQueue(guards);
+      })
+      .then(() => {
+        guards = extractComponentsGuards(
+          updatingRecords,
+          "beforeRouteUpdate",
+          to,
+          from
+        );
+        return runGuardQueue(guards);
+      })
+      .then(() => {
+        guards = [];
+        for (const record of to.matched) {
+          if (record.beforeEnter) {
+            guards.push(guardToPromise(record.beforeEnter, to, from, record));
+          }
+        }
+        return runGuardQueue(guards);
+      })
+      .then(() => {
+        guards = extractComponentsGuards(
+          enteringRecords,
+          "beforeRouteEnter",
+          to,
+          from
+        );
+        return runGuardQueue(guards);
+      })
+      .then(() => {
+        guards = [];
+        for (const guard of beforeResolveGuards.list()) {
+          guards.push(guardToPromise(guard, to, from, guard));
+        }
+        return runGuardQueue(guards);
+      });
   }
 
   // 通过路径匹配到对应的记录，更新currentRoute，调用导航钩子
@@ -166,8 +221,9 @@ function createRouter(options) {
     const targetLocation = resolve(to); //根据路径解析
     const from = currentRoute.value; // 从哪来
 
-    // 路由的钩子 在跳转前我们可以做路由的拦截
     // 路由的导航守卫 有几种呢？ 全局钩子 路由钩子 组件上的钩子
+
+    // 路由的钩子 在跳转前我们可以做路由的拦截， 钩子函数 =》路径跳转 =》 执行全局后置钩子 afterEach
     navigate(targetLocation, from)
       .then(() => {
         return finalizeNavigation(targetLocation, from); // 路由跳转和路径切换
