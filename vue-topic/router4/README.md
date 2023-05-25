@@ -307,11 +307,392 @@ import router from "./router";
 createApp(App).use(router).mount("#app");
 ```
 
+vue-topic/router4/src/App.vue
+
+```vue
+<template>
+  <nav>
+    <router-link to="/">Home</router-link> |
+    <router-link to="/about">About</router-link>
+  </nav>
+  <router-view />
+</template>
+```
+
+vue-topic/router4/src/views/HomeView.vue
+
+```vue
+<template>
+  <div class="home">首页</div>
+  <hr />
+  <router-link to="/a">a页面</router-link>&nbsp;
+  <router-link to="/b">b页面</router-link>
+  <hr />
+  <router-view></router-view>
+</template>
+
+<script>
+// @ is an alias to /src
+import HelloWorld from "@/components/HelloWorld.vue";
+
+export default {
+  name: "HomeView",
+  components: {
+    HelloWorld,
+  },
+  beforeRouteEnter(to, from, next) {
+    console.log("beforeRouteEnter", to);
+  },
+  beforeRouteUpdate(to, from, next) {
+    console.log("beforeRouteUpdate", to);
+  },
+  beforeRouteLeave(to, from, next) {
+    console.log("beforeRouteLeave", to);
+  },
+};
+</script>
+```
+
 ## vue-router 源码实现
 
-- 调用 createRouter 创建含有 install方法的router实例
-- 把路由配置项拍平处理
--
+● 手写 Vue-Router 中 Hash 模式和 History 模式的实现
+● 手写动态路由 addRoutes 原理
+● 手写$route及$router 实现
+● 手写 router-link 及 router-view 组件
+● 手写多级路由实现原理
+● 手写 Vue-router 中路由钩子原理
+
+### 手写 Vue-Router 中 Hash 模式和 History 模式的实现
+
+vue-topic/router4/src/vue-router/history/html5.js
+
+```js
+// 创建路由记录
+export function createWebHistory(base = "") {
+  // 1.路由系统最基本的 得包含当前的路径，当前路径下他的状态是什么, 需要提供两个切换路径的方法 push replace
+  const historyNavigation = useHistoryStateNavigation(base);
+
+  const historyListeners = useHistoryListeners(
+    base,
+    historyNavigation.state,
+    historyNavigation.location
+  );
+
+  const routerHistory = Object.assign({}, historyNavigation, historyListeners);
+
+  Object.defineProperty(routerHistory, "location", {
+    get: () => historyNavigation.location.value,
+  });
+  Object.defineProperty(routerHistory, "state", {
+    get: () => historyNavigation.state.value,
+  });
+
+  return routerHistory;
+}
+
+// 前进后退的时候 要更新historyState 和 currentLocation这两个边路
+function useHistoryListeners(base, historyState, currentLocation) {
+  let listeners = [];
+  // 最新的状态，已经前进后退完毕后的状态
+  const popStateHandler = ({ state }) => {
+    const to = createCurrentLocation(base);
+    const from = currentLocation.value;
+    const fromState = historyState.value;
+
+    currentLocation.value = to;
+    historyState.value = state;
+    let isBack = state.position - fromState.position < 0;
+    listeners.forEach((listener) => {
+      listener(to, from, { isBack });
+    });
+  };
+
+  // 只能监听浏览器的前进后退
+  window.addEventListener("popstate", popStateHandler);
+
+  function listen(cb) {
+    listeners.push(cb);
+  }
+
+  return { listen };
+}
+
+// 路由系统，base,hash模式时候使用
+function useHistoryStateNavigation(base) {
+  // window.history: {length:1,scrollRestoration:"auto",state:null, prototype:{pushState,replaceState,state,go,back,forward}}
+  // window.history.state {back:null, current:'', forward:null, position:0, replace:true, scroll:null}
+
+  // 当前位置信息
+  const currentLocation = {
+    value: createCurrentLocation(base),
+  };
+  // 当前路径的状态
+  const historyState = {
+    value: window.history.state,
+  };
+  // console.log("window.history", window.history.state);
+
+  // 第一次刷新页面 此时没有任何状态，那么我就自己维护一个状态
+  if (!historyState.value) {
+    changeLocation(
+      currentLocation.value,
+      buildState(null, currentLocation.value, null, true),
+      true
+    );
+  }
+
+  //（后退后是哪个路径、当前路径是哪个、要去哪里，我是用的push跳转还是replace跳转，跳转后滚动条位置是哪）
+  function changeLocation(to, state, replace) {
+    const hasPos = base.indexOf("#");
+    const url = hasPos > -1 ? base + to : to;
+    window.history[replace ? "replaceState" : "pushState"](state, null, url);
+    historyState.value = state; // 将自己生成的状态同步到了 路由系统中了
+  }
+
+  // 去哪，带的新的状态是谁？
+  function push(to, data) {
+    // 跳转的时候 我需要做两个状态 一个是跳转前 从哪去哪， 跳转后 从这到了那
+
+    // 跳转前
+    const currentState = Object.assign(
+      {},
+      historyState.value, // 当前的状态
+      {
+        forward: to,
+        scroll: { left: window.pageXOffset, top: window.pageYOffset },
+      }
+    );
+    // 本质是没有跳转的 只是更新了状态，后续在vue中我可以详细监控到状态的变化
+    changeLocation(currentState.current, currentState, true);
+
+    // 跳转后 从这到了那
+    const state = Object.assign(
+      {},
+      buildState(currentLocation.value, to, null),
+      { position: currentState.position + 1 },
+      data
+    );
+    changeLocation(to, state, false); // 真正的更改路径
+    currentLocation.value = to;
+  }
+
+  function replace(to, data) {
+    const state = Object.assign(
+      {},
+      buildState(historyState.value.back, to, historyState.value.forward, true)
+    );
+    changeLocation(to, state, true);
+    currentLocation.value = to; // 替换后需要将路径变为现在的路径
+  }
+  return {
+    location: currentLocation,
+    state: historyState,
+    push,
+    replace,
+  };
+}
+
+// 自己实现一个路由核心模块
+function buildState(
+  back,
+  current,
+  forward,
+  replace = false,
+  computedScroll = false
+) {
+  return {
+    back,
+    current,
+    forward,
+    replace,
+    scroll: computedScroll
+      ? { left: window.pathXOffset, top: window.pageYOffset }
+      : null,
+    position: window.history.length - 1,
+  };
+}
+
+// 返回当前位置信息
+function createCurrentLocation(base) {
+  const { pathname, search, hash } = window.location;
+
+  const hasPos = base.indexOf("#"); // 就是hash  / /about ->  #/ #/about
+  if (hasPos > -1) {
+    return base.slice(1) || "/";
+  }
+
+  return pathname + search + hash;
+}
+```
+
+vue-topic/router4/src/vue-router/history/hash.js
+
+```js
+// 实现路由监听，如果路径变化 需要通知用户
+// routerHistory.listen((to, from, { isBack }) => {
+//   console.log(to, from, isBack);
+// });
+import { createWebHistory } from "./html5";
+
+// 创建 hash 路由记录
+export function createWebHashHistory() {
+  return createWebHistory("#");
+}
+```
+
+### 手写 router-link 及 router-view 组件
+
+vue-topic/router4/src/vue-router/router-link.js
+
+```js
+import { inject, h } from "vue";
+
+function useLink(props) {
+  const router = inject("router");
+  function navigate() {
+    router.push(props.to);
+  }
+  return { navigate };
+}
+
+export const RouterLink = {
+  name: "RouterLink",
+  props: {
+    to: {
+      type: [String, Object],
+      required: true,
+    },
+  },
+  setup(props, { slots }) {
+    const link = useLink(props); // 修改 router 中 history
+    return () => {
+      return h(
+        // 虚拟节点 -》 真实节点
+        "a",
+        {
+          onClick: link.navigate,
+        },
+        slots.default && slots.default()
+      );
+    };
+  },
+};
+```
+
+vue-topic/router4/src/vue-router/router-view.js
+
+```js
+import { h, inject, provide, computed } from "vue";
+
+export const RouterView = {
+  name: "RouterView",
+  setup(props, { slots }) {
+    // 每次渲染组件，只会执行一次
+    const depth = inject("depth", 0); // 默认第 0 层
+    const injectRoute = inject("route location");
+    const matchedRouteRef = computed(() => injectRoute.matched[depth]); // 每次都去取一次 depth 保证准确性
+    provide("depth", depth + 1);
+
+    // /a  [home,a] =》 depth:0 home =>  depth:1 a
+    return () => {
+      const matchRoute = matchedRouteRef.value; // record
+
+      const viewComponent = matchRoute && matchRoute.components.default;
+      if (!viewComponent) {
+        return slots.default && slots.default();
+      }
+
+      return h(viewComponent);
+    };
+  },
+};
+```
+
+### 手写多级路由实现原理，手写动态路由 addRoutes 原理
+
+```js
+// 格式化用户的参数
+function normalizeRouteRecord(record) {
+  return {
+    path: record.path, // 状态机 解析路径的分数，算出匹配规则
+    meta: record.meta || {},
+    beforeEnter: record.beforeEnter,
+    name: record.name,
+    components: { default: record.component }, // 循环
+    children: record.children || [],
+  };
+}
+
+// 创造匹配记录 ，构建父子关系
+function createRouteRecordMatcher(record, parent) {
+  const matcher = {
+    path: record.path,
+    record,
+    parent,
+    children: [],
+  };
+  if (parent) {
+    parent.children.push(matcher);
+  }
+  return matcher;
+}
+
+// 树的遍历
+function createRouterMatcher(routes) {
+  const matchers = [];
+
+  // 循环加入路由到树中
+  function addRoute(route, parent) {
+    // 格式化用户参数
+    let normalizedRecord = normalizeRouteRecord(route);
+
+    // 把父亲的路径拼到子路由中
+    if (parent) {
+      normalizedRecord.path = parent.path + normalizedRecord.path;
+    }
+
+    // 构建父子关系
+    const matcher = createRouteRecordMatcher(normalizedRecord, parent);
+    // 循环路由中的子路由，加入到树中
+    if ("children" in normalizedRecord) {
+      let children = normalizedRecord.children;
+      for (let i = 0; i < children.length; i++) {
+        addRoute(children[i], matcher);
+      }
+    }
+    matchers.push(matcher);
+  }
+
+  routes.forEach((route) => addRoute(route));
+  // console.log("matchers", matchers);
+
+  // 匹配路径， /home/a   matched:[home, a]
+  function resolve(location) {
+    // {path:/,matched:HomeRecord} {path:/a,matched:[HomeRecord,aRecord]}
+    const matched = [];
+    let path = location.path;
+    let matcher = matchers.find((m) => m.path == path);
+    while (matcher) {
+      matched.unshift(matcher.record); // 将用户的原始数据 放到matched中
+      matcher = matcher.parent;
+    }
+
+    return {
+      path,
+      matched,
+    };
+  }
+
+  return {
+    addRoute, // 动态的添加路由， 面试问路由 如何动态添加 就是这个api
+    resolve,
+  };
+}
+
+export { createRouterMatcher };
+```
+
+### 手写 Vue-router 中路由钩子原理，手写$route及$router 实现
 
 vue-topic/router4/src/vue-router/index.js
 
