@@ -10,8 +10,8 @@ module.exports = {
     "eslint:recommended",
     "plugin:vue/vue3-essential", // eslint-plugin-vue
     "plugin:@typescript-eslint/recommended", // typescript 规则
-    "@vue/prettier"
-    // "./.eslintrc-auto-import.json"
+    "@vue/prettier",
+    "./.eslintrc-auto-import.json"
   ],
   overrides: [],
   // 可以解析.vue 文件
@@ -29,7 +29,7 @@ module.exports = {
       "error",
       {
         singleQuote: false, //使用双引号
-        semi: false, ////末尾添加分号  var a = 1
+        semi: true, ////末尾添加分号  var a = 1
         tabWidth: 2, // tab * 2
         trailingComma: "none", // {a:1,}
         useTabs: false,
@@ -37,4 +37,4 @@ module.exports = {
       }
     ]
   }
-}
+};

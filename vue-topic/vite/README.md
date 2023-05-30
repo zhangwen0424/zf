@@ -66,9 +66,9 @@ width, initial-scale=1.0"
 pnpm install vue # 安装 vue
 
 ```js
-import { createApp } from "vue"
-import App from "./App.vue" // 这里会报错，不支持.vue
-createApp(App).mount("#app")
+import { createApp } from "vue";
+import App from "./App.vue"; // 这里会报错，不支持.vue
+createApp(App).mount("#app");
 ```
 
 4.env.d.ts
@@ -78,9 +78,9 @@ main.ts 文件默认需要 ts 声明文件
 ```ts
 // 声明文件
 declare module "*.vue" {
-  import type { DefineComponent } from "vue"
-  const component: DefineComponent<{}, {}, any>
-  export default component
+  import type { DefineComponent } from "vue";
+  const component: DefineComponent<{}, {}, any>;
+  export default component;
 }
 ```
 
@@ -90,13 +90,13 @@ declare module "*.vue" {
 pnpm install @vitejs/plugin-vue -D
 
 ```ts
-import { defineConfig } from "vite"
-import vue from "@vitejs/plugin-vue"
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
 
 // vite 默认只会编译ts 不会检测ts
 export default defineConfig({
   plugins: [vue()]
-})
+});
 ```
 
 6.vue-tsc
@@ -210,7 +210,7 @@ module.exports = {
   },
   plugins: ["vue", "@typescript-eslint"],
   rules: {}
-}
+};
 ```
 
 package.json 中配置 eslint 检验，执行 pnpm lint
@@ -298,7 +298,7 @@ module.exports = {
   trailingComma: "none",
   useTabs: false,
   endOfLine: "auto"
-}
+};
 ```
 
 .prettierignore
@@ -385,7 +385,7 @@ commitlint.config.js
 ```js
 module.exports = {
   extends: ["@commitlint/config-conventional"]
-}
+};
 ```
 
 - git commit -m"feat: 初始化工程"
@@ -403,15 +403,195 @@ module.exports = {
   - style 不影响程序逻辑的代码修改(修改空白字符，格式缩进，补全缺失的分号等，没有改变代码逻辑)
   - test 测试用例新增、修改；
 
-import { createRouter, createWebHistory } from
-"vue-router"
+## 八.路由配置
+
+- vue-topic/vite/src/router/index.ts
+
+```js
+// 项目比较小，可以采用约定式路由 根据规范来创建目录
+// 项目比较大，建议采用配置
+import { createRouter, createWebHistory } from "vue-router";
+
 const getRoutes = () => {
-// 简单格式化
-const files =
-import.meta.glob("../views/\*.vue")
-const routes =
-Object.entries(files).map(([file, module]) => {
-const name =
-file.match(/\.\.\/views\/([^/]+?)\.vue/i)?.[1]
-return {
-path: "/" + name,
+  const files = import.meta.glob("../views/*.vue");
+  //../views/about.vue: () => import("/src/views/about.vue")
+  // ../views/home.vue: () => import("/src/views/home.vue")
+  return Object.entries(files).map(([file, module]) => {
+    const name = file.match(/\.\.\/views\/[^.]+?\.vue/i)?.[1];
+    return {
+      path: "/" + name,
+      component: module
+    };
+  });
+};
+export default createRouter({
+  history: createWebHistory(),
+  routes: getRoutes()
+});
+```
+
+- 需要引入 ts 类型定义
+
+vue-topic/vite/src/router/index.ts
+
+```ts
+// 需要引入vite/client得到 ts 支持
+/// <reference types="vite/client"/>
+```
+
+- vue-topic/vite/src/main.ts
+
+```js
+import { createApp } from "vue";
+import App from "./App.vue"; // 这里会报错，不支持.vue
+
+import router from "./router/index";
+createApp(App).use(router).mount("#app");
+```
+
+## 九.编写 Todo 功能
+
+```vue
+<template>
+  <div>
+    <input v-model="todo" type="text" />
+    <button @click="addTodo">添加内容</button>
+    <ul>
+      <li v-for="(item, index) in todos" :key="index">{{ item }}</li>
+    </ul>
+  </div>
+</template>
+
+<script lang="ts" setup>
+import { ref } from "vue";
+let todo = ref("");
+let todos = ref<string[]>([]);
+let addTodo = () => {
+  if (!todo.value) return;
+  todos.value.push(todo.value);
+};
+</script>
+```
+
+### 1.自动引入插件
+
+pnpm install -D unplugin-auto-import
+
+vue-topic/vite/vite.config.ts
+
+```js
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+import AutoImport from "unplugin-auto-import/vite";
+
+// vite 默认只会编译ts 不会检测ts
+export default defineConfig({
+  plugins: [
+    vue(),
+    AutoImport({
+      imports: ["vue", "vue-router"] // 自动引入ref、reactive、computed等
+      // eslintrc: { enabled: true } // 生成一个.eslint-auto-import.json，关闭 eslint 的校验，只需要配置一次生成即可
+    })
+  ]
+});
+```
+
+vite 中使用此插件后保证 vue 文件中不引入工具函数正常运行，保存一次会在根目录生成 auto-imports.d.ts 文件，但 ts 和 eslint 报错需把生成的文件配置到 tsconfig.json 和 .eslintrc 中
+
+- .eslintrc
+
+```json
+  extends: [
+  "eslint:recommended",
+  "plugin:vue/vue3-recommended", // vue3 解析 https://eslint.vuejs.org/
+  "plugin:@typescript-eslint/recommended",
+  "@vue/typescript/recommended",
+  "@vue/prettier",
+- "./.eslintrc-auto-import.json"
+  ]
+```
+
+- tsconfig.json
+
+```json
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue",
+    "./auto-imports.d.ts"
+  ]
+```
+
+### 2.路径别名
+
+"include": [
+"src/**/*.ts",
+"src/**/*.d.ts",
+"src/**/*.tsx",
+"src/**/*.vue",
+"./auto-imports.d.ts"
+]
+export default defineConfig({
+resolve: {
+alias: [{ find: "@", replacement:
+path.resolve(__dirname, "src") }]
+}
+})
+"compilerOptions": {
+"target": "esnext",
+"module": "esnext",
+"moduleResolution": "node",
+"strict": true,
+"sourceMap": true,
+"jsx": "preserve",
+"esModuleInterop": true,
+"lib": ["esnext", "dom"], 3.识别 TSX 文件  
+ "baseUrl": ".",
+"paths": {
+"@/_": ["src/_"]
+}
+},
+import { defineComponent, PropType } from "vue"
+export default defineComponent({
+props: {
+todos: {
+type: Array as PropType<string[]>,
+default: () => []
+}
+},
+render() {
+return (
+
+  <ul>
+  {this.todos.map((todo, index) => (
+  <li key={index}>{todo}</li>
+  ))}
+  </ul>
+  )
+  }
+  })
+
+## 九.unocss
+
+Atomic CSS 原子 CSS 是一种 CSS 架构方法，传统方法使用预
+处理器编译后生成样式，但是体积大。（类似行内样式，但是
+行内样式缺点：冗余）
+Tailwind 依赖 PostCSS 和 Autoprefixer + purgeCSS,开发
+环境 css 体积大
+Windi CSS 是一种 Tailwind CSS 替代品，不依赖，按需使
+用。采用预扫描的方式生成样式。 但是自定义复杂~~
+pnpm install @vitejs/plugin-vue-jsx -D
+import jsx from "@vitejs/plugin-vue-jsx"
+export default defineConfig({
+plugins: [
+vue(),
+jsx(),
+AutoImport({ imports: ["vue", "vue-router"],
+eslintrc: { enabled: false } })
+],
+resolve: {
+alias: [{ find: "@", replacement:
+path.resolve(__dirname, "src") }]
+}
+})
