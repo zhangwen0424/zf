@@ -45,7 +45,10 @@
 - Prettier 配置（代码风格格式化）
 - husky (代码提交校验)
 - commitlint (代码提交规范)
-- 路由配置
+- 路由配置(自动引入路由)
+- Todo 功能 (Component-API 自动引入、路径别名、tsx 文件解析)
+- unocss（原子 css, 未完待续...）
+- 
 
 ## Typescript
 

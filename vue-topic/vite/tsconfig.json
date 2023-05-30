@@ -8,7 +8,7 @@
     "jsx": "preserve", // 不允许ts编译jsx语法
     "esModuleInterop": true, // es6 和 commonjs 转化
     "lib": ["esnext", "dom"], // 支持esnext和dom语法
-    "baseUrl": ".",
+    "baseUrl": ".", // 当前路径的根目录
     "paths": {
       "@/*": ["src/*"] // @符号的真实含义， 还需要配置vite别名， 和 declare module
     }

@@ -329,7 +329,7 @@ end_of_line = lf
 <!-- eslint prettier editorconfig -->
 
 // 思想：
-// eslint 代码 prettier 风格 editconfig 配置
+// eslint js 代码检查插件， prettier 代码格式化工具统一风格， editconfig 代码编译器配置
 // eslint vscode、prettier vsode、editconfig for vscode
 // 默认格式化
 // 配合 git hook 实现提交代码前 先进行校验
@@ -525,73 +525,168 @@ vite 中使用此插件后保证 vue 文件中不引入工具函数正常运行�
 
 ### 2.路径别名
 
-"include": [
-"src/**/*.ts",
-"src/**/*.d.ts",
-"src/**/*.tsx",
-"src/**/*.vue",
-"./auto-imports.d.ts"
-]
-export default defineConfig({
-resolve: {
-alias: [{ find: "@", replacement:
-path.resolve(__dirname, "src") }]
-}
-})
-"compilerOptions": {
-"target": "esnext",
-"module": "esnext",
-"moduleResolution": "node",
-"strict": true,
-"sourceMap": true,
-"jsx": "preserve",
-"esModuleInterop": true,
-"lib": ["esnext", "dom"], 3.识别 TSX 文件  
- "baseUrl": ".",
-"paths": {
-"@/_": ["src/_"]
-}
-},
-import { defineComponent, PropType } from "vue"
-export default defineComponent({
-props: {
-todos: {
-type: Array as PropType<string[]>,
-default: () => []
-}
-},
-render() {
-return (
+allsource/vue-topic/vite-flow-1/vite.config.ts
 
-  <ul>
-  {this.todos.map((todo, index) => (
-  <li key={index}>{todo}</li>
-  ))}
-  </ul>
-  )
+```ts
+export default defineConfig({
+  resolve: {
+    alias: [
+      // 配置和rollup一样
+      { find: "@", replacement: path.resolve(__dirname, "src") }
+    ]
   }
-  })
+});
+```
+
+```vue
+<script lang="ts" setup>
+// 配置完后，鼠标扫过文件提示：module "\*.vue", 需要再tsconfig.json 中配置别名，ts 才可提示出正确的文件路径
+import Todo from "@/components/ToDo/index.vue";
+</script>
+```
+
+tsconfig.json
+
+```json
+{
+  "compilerOptions": {
+    "target": "esnext", // 目标转化的语法
+    "module": "esnext", // 转化的格式
+    "moduleResolution": "node", // 解析规则
+    "strict": true, // 严格模式
+    "sourceMap": true, // 启动sourcemap 调试
+    "jsx": "preserve", // 不允许ts编译jsx语法
+    "esModuleInterop": true, // es6 和 commonjs 转化
+    "lib": ["esnext", "dom"], // 支持esnext和dom语法
+    "baseUrl": ".", // 当前路径的根目录
+    "paths": {
+      "@/*": ["src/*"] // @符号的真实含义， 还需要配置vite别名， 和 declare module
+    }
+  }
+}
+```
+
+### 3.识别 TSX 文件
+
+.js 是 javascript 文件的扩展名，例如 main.js。
+.jsx 是 javascript 文件并表明使用了 JSX 语法。
+.ts 是 typescript 文件的扩展名
+.tsx 表明是 typescript 文件并使用了 JSX 语法
+
+vue-topic/vite/src/components/ToDo/todo-list.tsx
+
+```tsx
+import { PropType } from "vue";
+
+export default defineComponent({
+  props: {
+    todos: {
+      type: Array as PropType<string[]>,
+      default: () => []
+    }
+  },
+  render() {
+    return (
+      <ul>
+        {this.todos.map((todo, index) => {
+          return <li key={index}>{todo}</li>;
+        })}
+      </ul>
+    );
+  }
+});
+```
+
+需要安装插件：解析 vue 中的 jsx 语法
+pnpm install @vitejs/plugin-vue-jsx -D
+
+vite.config.ts
+
+```ts
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+import AutoImport from "unplugin-auto-import/vite"; // 自动引入 Composition API
+import path from "path";
+import jsx from "@vitejs/plugin-vue-jsx"; // 解析vue 中的 jsx 语法
+
+// vite 默认只会编译ts 不会检测ts
+export default defineConfig({
+  plugins: [
+    vue(),
+    jsx(),
+    AutoImport({
+      imports: ["vue", "vue-router"] // 自动引入ref、reactive、computed等
+      // eslintrc: { enabled: true } // 生成一个.eslint-auto-import.json，关闭 eslint 的校验
+    })
+  ],
+  resolve: {
+    alias: [
+      // 配置和rollup一样
+      { find: "@", replacement: path.resolve(__dirname, "src") }
+    ]
+  }
+});
+```
 
 ## 九.unocss
 
-Atomic CSS 原子 CSS 是一种 CSS 架构方法，传统方法使用预
-处理器编译后生成样式，但是体积大。（类似行内样式，但是
-行内样式缺点：冗余）
-Tailwind 依赖 PostCSS 和 Autoprefixer + purgeCSS,开发
-环境 css 体积大
-Windi CSS 是一种 Tailwind CSS 替代品，不依赖，按需使
-用。采用预扫描的方式生成样式。 但是自定义复杂~~
-pnpm install @vitejs/plugin-vue-jsx -D
-import jsx from "@vitejs/plugin-vue-jsx"
+- Atomic CSS 原子 CSS 是一种 CSS 架构方法，传统方法使用预处理器编译后生成样式，但是体积大。（类似行内样式，但是行内样式缺点：冗余）
+- Tailwind 依赖 PostCSS 和 Autoprefixer + purgeCSS,开发环境 css 体积大
+- Windi CSS 是一种 Tailwind CSS 替代品，不依赖，按需使用。采用预扫描的方式生成样式。 但是自定义复杂~~
+
+## 十.Vitest 单元测试
+
+pnpm i -D vitest @vue/test-utils happy-dom
+
+Vitest： vite 提供的单元测试框架
+
+vue-topic/vite/vite.config.ts
+
+```js
+/// <reference types="vitest"/>
+// 引入 vitest类型定义文件，使 defineConfig 能配置 test 属性
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+import AutoImport from "unplugin-auto-import/vite"; // 自动引入 Composition API
+import path from "path";
+import jsx from "@vitejs/plugin-vue-jsx"; // 解析vue 中的 jsx 语法
+
+// vite 默认只会编译ts 不会检测ts
 export default defineConfig({
-plugins: [
-vue(),
-jsx(),
-AutoImport({ imports: ["vue", "vue-router"],
-eslintrc: { enabled: false } })
-],
-resolve: {
-alias: [{ find: "@", replacement:
-path.resolve(__dirname, "src") }]
-}
-})
+  plugins: [
+    vue(),
+    jsx(),
+    AutoImport({
+      imports: ["vue", "vue-router"] // 自动引入ref、reactive、computed等
+      // eslintrc: { enabled: true } // 生成一个.eslint-auto-import.json，关闭 eslint 的校验
+    })
+  ],
+  resolve: {
+    alias: [
+      // 配置和rollup一样
+      { find: "@", replacement: path.resolve(__dirname, "src") }
+    ]
+  },
+  test: {
+    globals: true, // 显式提供全局 API,可以全局使用单元测试API
+    environment: "happy-dom", //Vitest 中的默认测试环境是一个 Node.js 环境。如果你正在构建 Web 端应用程序，你可以使用 jsdom 或 happy-dom 这种类似浏览器(browser-like)的环境来替代 Node.js
+    transformMode: { web: [/.tsx$/] } // 模块转换语法
+  }
+});
+```
+
+package.json 中配置 test 命令，回去找.test 或者 .spec 的文件
+
+```json
+  "scripts": {
+    "test": "vitest"
+  }
+```
+
+pnpm i -D @vue/test-utils happy-dom @types/jest
+
+import Todo from "@/components/todo/index.vue"
+import { shallowMount, mount } from "@vue/test-
+utils"
+describe("测试 Todo 组件", () => {
+it("当输入框输入内容时会将数据映射到组件实例上", ()
