@@ -931,6 +931,8 @@ app.listen(3000);
 
 ## Pinia 的使用
 
+### pinia 和 vuex 对比
+
 - vuex 的缺点 vuex 中的 store 是单一的 new Vue()
 - 模块方式很恶心 namesapced 整个状态是树状来管理的 store.state.b.c.d -> computed
 - action 和 mutation 的区别， 要不要有这个 action （增加代码，不知道要不要写）
@@ -959,7 +961,12 @@ export function(){
 
 ```
 
-- 安装 pinia: pnpm install -D pinia
+### 安装
+
+安装 pinia: pnpm install -D pinia
+
+### 创建 store
+
 - 创建 stores/counter.ts 文件
 
 ```ts
@@ -996,4 +1003,48 @@ export const useCounterStore = defineStore("counter", {
     }
   }
 });
+```
+
+### 注册及引入
+
+App.vue
+
+```vue
+<template>
+  <Counter></Counter>
+</template>
+
+<script lang="ts" setup>
+import Counter from "@/components/Counter/index.vue";
+</script>
+```
+
+main.ts
+
+```ts
+createApp(App).use(router).use(createPinia()).mount("#app");
+```
+
+### 组件中使用 store
+
+vue-topic/vite-flow-pinia/src/components/Counter/index.vue
+
+```vue
+<template>
+  <div>
+    <button @click="handleClick">计算器</button>
+    count:<span>{{ store.count }}</span> doubleCount:<span>{{
+      store.doubleCount
+    }}</span>
+  </div>
+</template>
+<script lang="ts" setup>
+import { useCounterStore } from "@/stores/counter"; // 引入 store
+const store = useCounterStore(); //使用 store
+const handleClick = () => {
+  store.changeCount(5).then(() => {
+    console.log("ok");
+  });
+};
+</script>
 ```

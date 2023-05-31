@@ -1,9 +1,9 @@
 // 定义一个 store
 
 // 1.setup 写法
-/* export const useCounterStore = defineStore("counter", () => {
+export const useCounterStore = defineStore("counter", () => {
   const count = ref(0);
-  const doubuleCount = computed(() => {
+  const doubleCount = computed(() => {
     return count.value * 2;
   });
   const changeCount = (payload: number) => {
@@ -14,11 +14,11 @@
       }, 100);
     });
   };
-  return { count, doubuleCount, changeCount };
-}); */
+  return { count, doubleCount, changeCount };
+});
 
 // 2.options 写法
-export const useCounterStore = defineStore("counter", {
+/* export const useCounterStore = defineStore("counter", {
   state: () => {
     return {
       count: 0
@@ -35,4 +35,4 @@ export const useCounterStore = defineStore("counter", {
       return Promise.resolve();
     }
   }
-});
+}); */

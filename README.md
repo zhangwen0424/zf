@@ -92,3 +92,21 @@
 - 从零实现 Webpack 中的热更新(HMR)
 - 从零实现 Webpack5 模块联邦原理并实现微前端
 - webpack 实战、性能优化和源码流程等面试题训练营
+
+## 网络安全
+
+- Web 漏洞的分析与防御
+- XSS(跨站脚本攻击)
+- CSRF(跨站请求伪造)
+
+## 跨域实现原理
+
+- jsonp
+- cors
+- postMessage
+- window.name
+- location.hash
+- http-proxy
+- nginx
+- websocket
+- document.domain
