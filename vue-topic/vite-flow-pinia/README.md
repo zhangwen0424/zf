@@ -1,4 +1,4 @@
-# vite
+# Vue3+Vite 项目流程
 
 ## 一.pnpm 管理项目
 
@@ -636,8 +636,9 @@ export default defineConfig({
 
 ## 十.Vitest 单元测试
 
-pnpm i -D vitest @vue/test-utils happy-dom
+pnpm i -D vitest @vue/test-utils happy-dom @types/jest
 
+@vue/test-utils 是一个用于基于 Vue3 的基础测试工具库，用于模拟给定的代码生成测试用例。
 Vitest： vite 提供的单元测试框架
 
 vue-topic/vite/vite.config.ts
@@ -676,17 +677,323 @@ export default defineConfig({
 ```
 
 package.json 中配置 test 命令，回去找.test 或者 .spec 的文件
+同时可以添加 git push 的钩子函数，在代码提交前进行单元测试：
+npx husky add .husky/pre-push "pnpm test:run"
 
 ```json
   "scripts": {
-    "test": "vitest"
+    "test": "vitest",
+    "test:run": "vitest run"
   }
 ```
 
-pnpm i -D @vue/test-utils happy-dom @types/jest
+## 十一.Mock 数据
 
-import Todo from "@/components/todo/index.vue"
-import { shallowMount, mount } from "@vue/test-
-utils"
-describe("测试 Todo 组件", () => {
-it("当输入框输入内容时会将数据映射到组件实例上", ()
+pnpm install mockjs vite-plugin-mock -D
+
+vite.config.js
+
+```js
+// 引入 vitest类型定义文件，使 defineConfig 能配置 test 属性
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+import AutoImport from "unplugin-auto-import/vite"; // 自动引入 Composition API
+import path from "path";
+import jsx from "@vitejs/plugin-vue-jsx"; // 解析vue 中的 jsx 语法
+import { viteMockServe } from "vite-plugin-mock"; // mock 数据
+
+export default defineConfig({
+  plugins: [
+    viteMockServe(), // mock 数据
+    vue(),
+    jsx(),
+    AutoImport({
+      imports: ["vue", "vue-router"] // 自动引入ref、reactive、computed等
+      // eslintrc: { enabled: true } // 生成一个.eslint-auto-import.json，关闭 eslint 的校验
+    })
+  ]
+});
+```
+
+vue-topic/vite/mock/user.ts
+
+```ts
+// 用来mock数据的
+export default [
+  {
+    url: "/api/login",
+    method: "post",
+    response: (res) => {
+      // express
+      return {
+        code: 0, // code 0 成功  code 1失败
+        data: {
+          token: "Bearer Token",
+          username: res.body.username
+        }
+      };
+    }
+  }
+];
+```
+
+## 十二.axios 封装和使用
+
+pnpm install -D axios
+
+vue-topic/vite/src/utils/http.ts
+
+```ts
+import axios, { AxiosRequestConfig } from "axios";
+
+// 设置返回数据的格式
+export interface ResponseData<T> {
+  code: number;
+  data?: T;
+  msg?: string;
+  //..
+}
+class HttpRequest {
+  public baseURL = import.meta.env.DEV ? "/api" : "/"; // 基本请求路径
+  public timeout = 3000;
+
+  // 每次请求都创建一个独一无二的实例 ， 为了保证 请求之间是互不干扰的
+  public request(options: AxiosRequestConfig) {
+    const instance = axios.create(); // 创建一个axios实例
+    options = this.mergeOptions(options); // 合并请求选项
+    this.setInterceptors(instance); // 设置拦截器
+    return instance(options);
+  }
+  setInterceptors(instance: any) {
+    // 配置请求拦截器
+    instance.interceptors.request.use(
+      (config) => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        config.headers!["token"] = "bearer token";
+        return config;
+      },
+      (err) => {
+        return Promise.reject(err);
+      }
+    );
+    // 配置响应拦截器
+    instance.interceptors.response.use(
+      (res) => {
+        const { code } = res.data;
+        if (code !== 0) {
+          return Promise.reject(res);
+        }
+        return res;
+      },
+      (err) => {
+        return Promise.reject(err);
+      }
+    );
+  }
+  // 合并请求选项
+  mergeOptions(options: AxiosRequestConfig) {
+    return Object.assign(
+      {
+        baseURL: this.baseURL,
+        timeout: this.timeout
+      },
+      options
+    );
+  }
+  public get<T>(url: string, data: unknown): Promise<ResponseData<T>> {
+    // res.data.data
+    return this.request({
+      method: "get",
+      url,
+      params: data
+    }).then(
+      (res) => {
+        return Promise.resolve(res.data);
+      },
+      (err) => {
+        return Promise.reject(err);
+      }
+    );
+  }
+  public post<T>(url: string, data: unknown): Promise<ResponseData<T>> {
+    // res.data.data
+    return this.request({
+      method: "post",
+      url,
+      data
+    }).then(
+      (res) => {
+        return Promise.resolve(res.data);
+      },
+      (err) => {
+        return Promise.reject(err);
+      }
+    );
+  }
+}
+// 请求取消 需要维护页面的状态 base:{ 'a','b','c'}
+export default new HttpRequest();
+```
+
+vue-topic/vite/src/api/user.ts
+
+```ts
+import http from "@/utils/http";
+
+// 封装接口路径
+const enum USERAPI_LIST {
+  login = "/login" // 请求路径
+}
+
+// 封装用户的信息
+export interface IUserData {
+  username: string;
+  password: string;
+}
+
+// 后续方法可以继续扩展  用户调用的接口
+export function login<T>(data: IUserData) {
+  return http.post<T>(USERAPI_LIST.login, data);
+}
+```
+
+vue-topic/vite/src/main.ts
+
+```ts
+import { createApp } from "vue";
+import App from "./App.vue"; // 这里会报错，不支持.vue
+import { login } from "./api/user";
+import router from "./router/index";
+createApp(App).use(router).mount("#app");
+
+login<{ username: string; token: string }>({
+  username: "hello",
+  password: "123456"
+}).then((res) => {
+  console.log(res.data?.username);
+});
+```
+
+## 十三.代理配置
+
+一般不采用 vite.config.js 中 mock 数据，使用 express 返回数据，此时需要配置下代理
+
+vite.config.js
+
+```ts
+// 引入 vitest类型定义文件，使 defineConfig 能配置 test 属性
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+import AutoImport from "unplugin-auto-import/vite"; // 自动引入 Composition API
+import path from "path";
+import jsx from "@vitejs/plugin-vue-jsx"; // 解析vue 中的 jsx 语法
+import { viteMockServe } from "vite-plugin-mock";
+
+export default defineConfig({
+  plugins: [
+    // viteMockServe(), // mock 数据，注释掉此插件
+    vue(),
+    jsx(),
+    AutoImport({
+      imports: ["vue", "vue-router"] // 自动引入ref、reactive、computed等
+      // eslintrc: { enabled: true } // 生成一个.eslint-auto-import.json，关闭 eslint 的校验
+    })
+  ],
+  server: {
+    // 方向代理  不需要配置跨域  http://127.0.0.1:3000/login
+    proxy: {
+      // http-proxy 在中间做了个中间层  客户端->(中间层*透明的* -> 真实服务器)
+      "/api": {
+        target: "http://localhost:3000",
+        changeOrigin: true, // 这里不加服务端无法拿到origin属性
+        rewrite: (path) => path.replace(/^\/api/, "") //重写请求地址
+      }
+    }
+  }
+});
+```
+
+根目录新建 server.js，起一个 express 路由，执行：nodemon server.js
+
+```js
+const express = require("express");
+
+const app = express();
+
+app.post("/login", (req, res) => {
+  res.send({
+    code: 0,
+    data: { username: "zw", token: "server token" }
+  });
+});
+app.listen(3000);
+```
+
+## Pinia 的使用
+
+- vuex 的缺点 vuex 中的 store 是单一的 new Vue()
+- 模块方式很恶心 namesapced 整个状态是树状来管理的 store.state.b.c.d -> computed
+- action 和 mutation 的区别， 要不要有这个 action （增加代码，不知道要不要写）
+- vuex 不是用 ts 来写的 类型提示我们需要自己在封装
+- .....
+
+- pinia 菠萝 好处多仓库 store -> reactive() 数据源
+- 扁平化管理
+- action 只保留 action
+- ts 来编写的 体积小 也是支持 vue2 也有自己的工具
+- 不单独支持 optionsApi
+
+```js
+// options api
+export default {
+  state,
+  getters,
+  actions,
+  mutations,
+}
+
+// hook
+export function(){
+
+}
+
+```
+
+- 安装 pinia: pnpm install -D pinia
+- 创建 stores/counter.ts 文件
+
+```ts
+// 定义一个 store
+
+// 1.setup 写法
+/* export const useCounterStore = defineStore("counter", () => {
+  const count = ref(0);
+  const doubleCount = computed(() => {
+    return count.value * 2;
+  });
+  const changeCount = (payload: number) => {
+    return new Promise<void>((resolve, reject) => {
+      setTimeout(() => {
+        count.value += payload;
+        resolve();
+      }, 100);
+    });
+  };
+  return { count, doubuleCount, changeCount };
+}); */
+
+// 2.options 写法
+export const useCounterStore = defineStore("counter", {
+  state: () => {
+    return {
+      count: 0
+    };
+  },
+
+  actions: {
+    changeCount(state: any, payload: number) {
+      state.count += payload;
+    }
+  }
+});
+```

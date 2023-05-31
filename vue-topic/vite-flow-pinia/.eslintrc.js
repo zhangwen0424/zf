@@ -24,6 +24,7 @@ module.exports = {
   plugins: ["vue", "@typescript-eslint"],
   rules: {
     "vue/multi-word-component-names": "off", // 关闭组件名称多个字母组成校验
+    "@typescript-eslint/no-var-requires": 0, // 关闭require语法错误提示
     "prettier/prettier": [
       // 自带的prettier规则
       "error",

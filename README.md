@@ -34,7 +34,7 @@
 - 手写 Vuex 中插件机制 replaceState、subscribe...
 - 手写 Vuex 中辅助函数 mapSate、mapGetters...
 
-## 项目搭建流程及代码规范
+## Vue3+Vite 项目流程
 
 项目源码：https://github.com/zhangwen0424/zf/tree/master/vue-topic/vite
 
@@ -48,7 +48,11 @@
 - 路由配置(自动引入路由)
 - Todo 功能 (Component-API 自动引入、路径别名、tsx 文件解析)
 - unocss（原子 css, 未完待续...）
-- 
+- Vitest 单元测试
+- Mock 数据
+- axios 封装和使用
+- vite 接口代理配置
+- Pinia
 
 ## Typescript
 
