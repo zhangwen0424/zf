@@ -53,6 +53,7 @@
 - axios 封装和使用
 - vite 接口代理配置
 - Pinia
+- GitHub Actions 自动部署( 未完待续...)
 
 ## Typescript
 

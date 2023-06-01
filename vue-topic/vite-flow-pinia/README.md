@@ -1,4 +1,4 @@
-# Vue3+Vite 项目流程
+# Vue3+Vite+Pinia 项目流程
 
 ## 一.pnpm 管理项目
 
@@ -1048,3 +1048,13 @@ const handleClick = () => {
 };
 </script>
 ```
+
+忽略 ts 校验目录
+
+```json
+{
+  "exclude": ["src/tests/**/*.*"]
+}
+```
+
+## 十五.GitHub Actions 自动部署

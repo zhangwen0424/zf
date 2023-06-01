@@ -12,9 +12,9 @@
 <script lang="ts" setup>
 // import { ref } from "vue";
 import TodoList from "./todo-list";
-let todo = ref("");
-let todos = ref<string[]>([]);
-let addTodo = () => {
+const todo = ref("");
+const todos = ref<string[]>([]);
+const addTodo = () => {
   if (!todo.value) return;
   todos.value.push(todo.value);
 };
