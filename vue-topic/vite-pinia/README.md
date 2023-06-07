@@ -127,6 +127,9 @@ const handleClick2 = () => {
 
 - createOptionStore(内部会拿到用户的 options 将他变成 setup)
 - createSetupStore(用户穿的就是 setup 可以直接使用)
+- 修改状态可以通过 .xxx = 新值
+- $patch、$reset(只支持 option api)、$subscribe(监听状态变化，将状态保存到本地)、$action(监听用户调用 action 方法)
+- $dispose(终止作用域)
 
 配置别名: vue-topic/vite-pinia/vite.config.js
 
