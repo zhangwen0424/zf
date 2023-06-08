@@ -128,10 +128,13 @@ const handleClick2 = () => {
 - createOptionStore(内部会拿到用户的 options 将他变成 setup)
 - createSetupStore(用户穿的就是 setup 可以直接使用)
 - 修改状态可以通过 .xxx = 新值
-- $patch(合并更新)、$reset(重置状态，只支持 option api)、$subscribe(监听状态变化，将状态保存到本地)、$action(监听用户调用 action 方法)
+- $patch(合并更新)、$reset(重置状态，只支持 option api)、$subscribe(监听状态变化，将状态保存到本地)、$action(监听用户调用 action 方法) $onAction（收集依赖）
 - $dispose(终止作用域)
+- pinia 中使用插件 createPinia().use(fn), 通过$subscript、$onAction 注册持久化数据保存方案
+- 异步路由中获取不到 Pinia，通过 activePinia、setActivePinia，挂到全局变量上
+- 解构丧失响应式问题,通过 storeToRefs()解决
 
-配置别名: vue-topic/vite-pinia/vite.config.js
+### 配置别名: vite.config.js
 
 ```js
 import { defineConfig } from "vite";
@@ -148,20 +151,44 @@ export default defineConfig({
 });
 ```
 
-vue-topic/vite-pinia/src/main.js
+### /src/main.js
 
 ```js
 import { createApp } from "vue";
 import { createPinia } from "@/pinia";
 import App from "./App.vue";
+import { useCounterStore1 } from "./stores/counter1";
 
 const app = createApp(App);
+
 // 基本上咱们js中的插件都是函数
-app.use(createPinia()); // 插件要求得有一个install方法
+const pinia = createPinia();
+
+// 插件就是一个函数，use 是用来注册插件的，插件的核心就是 $subscribe、$onAction
+pinia.use(function ({ store }) {
+  let local = localStorage.getItem(store.$id + "PINIA_STATE");
+  if (local) {
+    store.$state = JSON.parse(local);
+  }
+  store.$subscribe(({ storeId: id }, state) => {
+    localStorage.setItem(id + "PINIA_STATE", JSON.stringify(state));
+  });
+  store.$onAction(() => {
+    // 埋点
+  });
+  return { a: 1 };
+});
+
+app.use(pinia); // 插件要求得有一个install方法
+
 app.mount("#app");
+
+// 异步路由，在任何地方都可以使用 pinia，通过 activePinia、setActivePinia 存全局变量
+const store1 = useCounterStore1(); // inject方法无法使用
+console.log(store1.count);
 ```
 
-vue-topic/vite-pinia/src/stores/counter1.js
+### /src/stores/counter1.js
 
 ```js
 import { defineStore } from "@/pinia";
@@ -187,7 +214,7 @@ export const useCounterStore1 = defineStore("counter1", {
 });
 ```
 
-vue-topic/vite-pinia/src/stores/counter2.js
+### /src/stores/counter2.js
 
 ```js
 import { defineStore } from "@/pinia";
@@ -206,10 +233,11 @@ export const useCounterStore2 = defineStore("counter2", () => {
 });
 ```
 
-vue-topic/vite-pinia/src/App.vue
+### /src/App.vue
 
 ```vue
 <script setup>
+import { storeToRefs } from "@/pinia/storeToRefs";
 import { useCounterStore1 } from "./stores/counter1";
 import { useCounterStore2 } from "./stores/counter2";
 const store1 = useCounterStore1();
@@ -243,6 +271,9 @@ const handelDisposeAll = () => {
   // store1._p._e.stop();// 可以终止所有，但是未提供出来，不建议使用
 };
 
+// 我们用 pinia 解构store，不要用 toRefs，要用 storeToRefs，可以跳过函数的处理
+const { count, double } = storeToRefs(store1); // 直接取会丧失响应式，这里通过转化成 ref 使其保留响应式
+
 const store2 = useCounterStore2();
 const handleClick2 = () => {
   store2.increment(3);
@@ -270,6 +301,7 @@ store2.$onAction(({ after, onError }) => {
   <button @click="handleClick1">修改状态</button>
   <button @click="handleReset1">重置状态</button>
   <button @click="handleDispose">卸载响应式</button>
+  通过解构获取的状态：{{ count }} {{ double }}
   <hr />
 
   ----------------setup--------------<br />
@@ -294,12 +326,14 @@ vue-topic/vite-pinia/src/pinia/rootStore.js
 export const piniaSymbol = Symbol();
 ```
 
-vue-topic/vite-pinia/src/pinia/createPinia.js
+### /src/pinia/createPinia.js
 
 ```js
 // 存的是createPinia这个ap
 import { ref, effectScope } from "vue";
 import { piniaSymbol } from "./rootStore";
+export let activePinia; // 全局变量
+export let setActivePinia = (pinia) => (activePinia = pinia);
 
 export function createPinia() {
   const scope = effectScope();
@@ -308,10 +342,17 @@ export function createPinia() {
 
   // 状态里面 可能会存放 计算属性， computed
 
+  const _p = [];
   const pinia = {
+    use(plugin) {
+      _p.push(plugin);
+      return this; // 方便插件的链式调用 .use(fn).use(fn)
+    },
+    _p, // 插件
     _s: new Map(), // 这里用这个map来存放所有的store   {counter1-> store,counter2-> store}
     _e: scope, // 可以控制停止响应
     install(app) {
+      setActivePinia(pinia); // 存全局
       // 对于pinia而言，我们希望让它去管理所有的store
       // pinia 要去收集所有store的信息 , 过一会想卸载store
       // 如何让所有的store 都能获取这个pinia 对象
@@ -325,28 +366,27 @@ export function createPinia() {
 }
 ```
 
-vue-topic/vite-pinia/src/pinia/subscribe.js
+### /src/pinia/storeToRefs.js
 
 ```js
-// 发布订阅
-export function addSubscription(subscriptions, callback) {
-  subscriptions.push(callback);
+import { isReactive, toRaw, isRef, toRef } from "vue";
 
-  const removeSubscription = () => {
-    const idx = subscriptions.indexOf(callback);
-    if (idx > -1) {
-      subscriptions.splice(idx, 1);
+export function storeToRefs(store) {
+  // store是 proxy，需要转成普通对象
+  store = toRaw(store);
+
+  const refs = {};
+  for (let key in store) {
+    const value = store[key];
+    if (isRef(value) || isReactive(value)) {
+      refs[key] = toRef(store, key);
     }
-  };
-  return removeSubscription;
-}
-
-export function triggerSubscriptions(subscriptions, ...args) {
-  subscriptions.slice().forEach((cb) => cb(...args));
+  }
+  return refs;
 }
 ```
 
-vue-topic/vite-pinia/src/pinia/store.js
+### /src/pinia/store.js
 
 ```js
 // 这里存放 defineStore的api
@@ -372,6 +412,7 @@ import {
 } from "vue";
 import { piniaSymbol } from "./rootStore";
 import { addSubscription, triggerSubscriptions } from "./subscribe";
+import { setActivePinia, activePinia } from "./createPinia";
 
 // 计算属性是 ref,同时也是一个 effect
 function isComputed(v) {
@@ -540,7 +581,9 @@ function createSetupStore(id, setup, pinia, isOption) {
   }
   // console.log(pinia.state.value);
 
+  store.$id = id;
   pinia._s.set(id, store); // 将store 和 id映射起来
+
   Object.assign(store, setupStore); //setupStore就是 setup 函数的返回值
 
   // 定义一个$state的替换，可以操作 state 的所有属性
@@ -549,6 +592,15 @@ function createSetupStore(id, setup, pinia, isOption) {
     // store1.$state = { count: 1090 };
     // state =》{ count: 1090 }， $patch传入的是一个函数，会把pinia.state.value[id] 作为$state 传入
     set: (state) => $patch(($state) => Object.assign($state, state)), // state 为新状态，$state为老状态
+  });
+
+  // 没创建一次store，就执行插件，循环执行插件
+  pinia._p.forEach((plugin) => {
+    // 将插件的返回值作为store的属性
+    Object.assign(
+      store,
+      scope.run(() => plugin({ store }))
+    );
   });
 
   return store;
@@ -572,7 +624,11 @@ export function defineStore(idOrOptions, setup) {
   function useStore() {
     // 在这里我们拿到的store 应该是同一个
     let instance = getCurrentInstance();
-    const pinia = instance && inject(piniaSymbol);
+    let pinia = instance && inject(piniaSymbol);
+    if (pinia) {
+      setActivePinia(pinia);
+    }
+    pinia = activePinia;
 
     // 第一次useStore
     if (!pinia._s.has(id)) {

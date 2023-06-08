@@ -1,4 +1,5 @@
 <script setup>
+import { storeToRefs } from "@/pinia/storeToRefs";
 import { useCounterStore1 } from "./stores/counter1";
 import { useCounterStore2 } from "./stores/counter2";
 const store1 = useCounterStore1();
@@ -32,6 +33,9 @@ const handelDisposeAll = () => {
   // store1._p._e.stop();// 可以终止所有，但是未提供出来，不建议使用
 };
 
+// 我们用 pinia 解构store，不要用 toRefs，要用 storeToRefs，可以跳过函数的处理
+const { count, double } = storeToRefs(store1); // 直接取会丧失响应式，这里通过转化成 ref 使其保留响应式
+
 const store2 = useCounterStore2();
 const handleClick2 = () => {
   store2.increment(3);
@@ -59,6 +63,7 @@ store2.$onAction(({ after, onError }) => {
   <button @click="handleClick1">修改状态</button>
   <button @click="handleReset1">重置状态</button>
   <button @click="handleDispose">卸载响应式</button>
+  通过解构获取的状态：{{ count }} {{ double }}
   <hr />
 
   ----------------setup--------------<br />

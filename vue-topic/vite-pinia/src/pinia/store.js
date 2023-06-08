@@ -21,6 +21,7 @@ import {
 } from "vue";
 import { piniaSymbol } from "./rootStore";
 import { addSubscription, triggerSubscriptions } from "./subscribe";
+import { setActivePinia, activePinia } from "./createPinia";
 
 // 计算属性是 ref,同时也是一个 effect
 function isComputed(v) {
@@ -189,7 +190,9 @@ function createSetupStore(id, setup, pinia, isOption) {
   }
   // console.log(pinia.state.value);
 
+  store.$id = id;
   pinia._s.set(id, store); // 将store 和 id映射起来
+
   Object.assign(store, setupStore); //setupStore就是 setup 函数的返回值
 
   // 定义一个$state的替换，可以操作 state 的所有属性
@@ -198,6 +201,15 @@ function createSetupStore(id, setup, pinia, isOption) {
     // store1.$state = { count: 1090 };
     // state =》{ count: 1090 }， $patch传入的是一个函数，会把pinia.state.value[id] 作为$state 传入
     set: (state) => $patch(($state) => Object.assign($state, state)), // state 为新状态，$state为老状态
+  });
+
+  // 没创建一次store，就执行插件，循环执行插件
+  pinia._p.forEach((plugin) => {
+    // 将插件的返回值作为store的属性
+    Object.assign(
+      store,
+      scope.run(() => plugin({ store }))
+    );
   });
 
   return store;
@@ -221,7 +233,11 @@ export function defineStore(idOrOptions, setup) {
   function useStore() {
     // 在这里我们拿到的store 应该是同一个
     let instance = getCurrentInstance();
-    const pinia = instance && inject(piniaSymbol);
+    let pinia = instance && inject(piniaSymbol);
+    if (pinia) {
+      setActivePinia(pinia);
+    }
+    pinia = activePinia;
 
     // 第一次useStore
     if (!pinia._s.has(id)) {
