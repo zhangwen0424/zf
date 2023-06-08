@@ -195,7 +195,9 @@ function createSetupStore(id, setup, pinia, isOption) {
   // 定义一个$state的替换，可以操作 state 的所有属性
   Object.defineProperty(store, "$state", {
     get: () => pinia.state.value[id],
-    set: (state) => $patch(($state) => Object.assign($state, state)),
+    // store1.$state = { count: 1090 };
+    // state =》{ count: 1090 }， $patch传入的是一个函数，会把pinia.state.value[id] 作为$state 传入
+    set: (state) => $patch(($state) => Object.assign($state, state)), // state 为新状态，$state为老状态
   });
 
   return store;
