@@ -34,7 +34,7 @@
 - 手写 Vuex 中插件机制 replaceState、subscribe...
 - 手写 Vuex 中辅助函数 mapSate、mapGetters...
 
-## 项目搭建流程及代码规范
+## Vue3+Vite 项目流程
 
 项目源码：https://github.com/zhangwen0424/zf/tree/master/vue-topic/vite
 
@@ -45,7 +45,15 @@
 - Prettier 配置（代码风格格式化）
 - husky (代码提交校验)
 - commitlint (代码提交规范)
-- 路由配置
+- 路由配置(自动引入路由)
+- Todo 功能 (Component-API 自动引入、路径别名、tsx 文件解析)
+- unocss（原子 css, 未完待续...）
+- Vitest 单元测试
+- Mock 数据
+- axios 封装和使用
+- vite 接口代理配置
+- Pinia
+- GitHub Actions 自动部署( 未完待续...)
 
 ## Typescript
 
@@ -85,3 +93,21 @@
 - 从零实现 Webpack 中的热更新(HMR)
 - 从零实现 Webpack5 模块联邦原理并实现微前端
 - webpack 实战、性能优化和源码流程等面试题训练营
+
+## 网络安全
+
+- Web 漏洞的分析与防御
+- XSS(跨站脚本攻击)
+- CSRF(跨站请求伪造)
+
+## 跨域实现原理
+
+- jsonp
+- cors
+- postMessage
+- window.name
+- location.hash
+- http-proxy
+- nginx
+- websocket
+- document.domain
