@@ -12,8 +12,9 @@
         // "<node_internals>/**" //跳过内部模块
         // node/异步流程和事件循环/3.generator.js
         // node/5.模块/useA.js
+        // allsource/zhufengwebpackinterview/6.webpackflow/debug.js
       ],
-      "program": "${workspaceFolder}/node/5.模块/useA.js"
+      "program": "${workspaceFolder}/allsource/zhufengwebpackinterview/6.webpackflow/debug.js"
     }
   ]
 }
