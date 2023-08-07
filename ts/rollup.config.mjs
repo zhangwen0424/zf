@@ -6,7 +6,8 @@ import { fileURLToPath } from "url";
 
 // webpack适用于打包图片文件等，这里使用 rollup
 export default {
-  input: "./src/index.ts", //入口
+  // input: "./src/index.ts", //入口
+  input: "./src/笔试.ts", //入口
   //出口
   output: {
     file: "./dist/bundle.js", //打包的文件名字
@@ -28,7 +29,7 @@ export default {
       tsconfig: fileURLToPath(new URL("tsconfig.json", import.meta.url)),
     }),
     serve({
-      open: false, //打开一个页面
+      open: true, //打开一个页面
       openPage: "/public/index.html", //打开页面地址
       port: 3333, //打开页面的端口号
     }),

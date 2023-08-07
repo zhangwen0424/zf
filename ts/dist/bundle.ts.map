@@ -1,1 +1,0 @@
-{"version":3,"file":"bundle.ts","sources":["../src/index.ts"],"sourcesContent":["debugger;\nconsole.log(\"hello\");\nconsole.log(\"ts\");\nlet num: number = 1;\n"],"names":[],"mappings":";;;CAAA,SAAS;CACT,OAAO,CAAC,GAAG,CAAC,OAAO,CAAC,CAAC;CACrB,OAAO,CAAC,GAAG,CAAC,IAAI,CAAC;;;;;;"}
