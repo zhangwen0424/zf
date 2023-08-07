@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <!-- 优势： 双向通信，持久链接， 发送的消息增加帧 是非常小的， 支持多种数据格式， 天生支持跨域通信 -->
+
+    <script>
+        // 服务端主要提供一个websocket服务
+        const ws = new WebSocket('ws://localhost:3000')
+        ws.onopen = function(){
+            console.log('Connection opend')
+            ws.send('hello server'); // 给服务端能发送消息
+        }
+        // 监控服务端的数据
+        ws.onmessage = function(e){
+            console.log('服务度响应的数据:' + e.data)
+        }
+        // http 各种header的使用
+
+        // 怎么实现握手的，数据长什么样子，怎么通信的
+        // 协议的表示方式
+
+
+        // GET ws://localhost:3000 HTTP/1.1
+        // Connection: Upgrade
+        // Sec-Websocket-Key: 用于保证是安全的websocket链接 防止恶意连接 ， 可以用于握手
+        // Sec-Websocket-Version: 13
+        // Upgrade: websocket 升级的协议是什么
+
+        // Sec-Websocket-Accept 是根据key算出来的表示握手成功了
+        // Upgrade: websocket
+
+        // wireshark 抓包
+
+       
+
+    </script>
+</body>
+</html>

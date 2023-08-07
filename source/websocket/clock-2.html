@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="clock"></div>
+
+    <script>
+
+        // 客户端发送请求后，服务端响应后，我就发下一个请求
+
+        function longPolling(){
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET','http://localhost:3000/clock',true);
+            xhr.onload = function(){
+                clock.innerHTML = xhr.responseText
+                longPolling();
+            }
+            xhr.send()
+        }
+        longPolling()
+            
+        // 每隔1s就发送一个请求？
+
+        // 长轮询 想解决短轮询的问题 （希望实时性更强）
+
+        // 1）如果实时性强了，也会造成频繁的网络请求
+        // 2）链接堆积问题  这些链接都需要在服务端中保持打开， 占用服务端资源
+
+        // 实时性高了，但是要求服务端的并发能力必须强
+
+        
+
+
+
+
+    </script>
+</body>
+</html>

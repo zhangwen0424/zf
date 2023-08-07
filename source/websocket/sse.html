@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        const eventsource = new EventSource('http://localhost:3000/clock')
+        eventsource.onopen = function(){
+            console.log('Connection opened');
+        }
+        eventsource.onmessage = function(e){ // postMessage
+            console.log(e.data) 
+        }
+    </script>
+</body>
+</html>
